@@ -16,6 +16,4 @@ __pycache__/
 *.save
 
 # Local configuration and script files
-launch_app.sh
-kill_app.sh
 frontend/config.js
