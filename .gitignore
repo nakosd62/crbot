@@ -13,7 +13,11 @@ __pycache__/
 
 # Temporary save files
 *-save*
-*.save
+*.save*
 
-# Local configuration and script files
-frontend/config.js
+# GCP upload configuration and script files
+env.yaml
+gcp_deploy.sh
+
+# Local config files
+.env

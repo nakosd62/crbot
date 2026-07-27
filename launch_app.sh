@@ -1,7 +1,15 @@
 #!/bin/bash
 
-export CRBOT_HOSTNAME="0.0.0.0"
-export CRBOT_PORT="3000"
+# Load environment variables from .env if present
+if [ -f .env ]; then
+    echo "Loading environment configuration from .env..."
+    set -a
+    source .env
+    set +a
+else
+    echo "Error: .env file not found. Please create one with your required variables."
+    exit 1
+fi
 
 # 1. Setup Virtual Environment if missing
 if [ ! -d "venv" ]; then

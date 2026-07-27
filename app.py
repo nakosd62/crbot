@@ -198,7 +198,19 @@ def translate_query():
 
 @app.route('/api/config', methods=['GET'])
 def get_config():
-    conn_str = request.args.get('database_url') or DEFAULT_CONN
+    # 1. Grab environment configuration
+    default_db_url = os.environ.get(
+        "DATABASE_URL", 
+        "postgresql://postgres:password@localhost:26257/defaultdb?sslmode=verify-full"
+    )
+    default_model = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash")
+    
+    # Optional: Read API keys from environment variable (comma-separated if multiple)
+    preset_keys_env = os.environ.get("GEMINI_PRESET_KEYS", "")
+    preset_keys = [k.strip() for k in preset_keys_env.split(",") if k.strip()] if preset_keys_env else []
+
+    # 2. Extract active connection details if query param provided or default
+    conn_str = request.args.get('database_url') or default_db_url
     db_name = "Unknown"
     username = "Unknown"
     conn = None
@@ -217,10 +229,13 @@ def get_config():
             conn.close()
 
     return jsonify({
-        'default_database_url': DEFAULT_CONN,
+        'default_database_url': default_db_url,
+        'default_model': default_model,
+        'preset_keys': preset_keys,
         'database_name': db_name,
         'username': username
     })
+
 
 @app.route('/api/execute', methods=['POST'])
 def execute_query():

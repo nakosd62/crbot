@@ -1,12 +1,12 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   let chatHistory = [];
 
-  // DEFAULT CONSTANTS
-  const DEFAULT_DB_URL = window.DEFAULT_DB_URL || "";
-  const DEFAULT_MODEL = "gemini-3.6-flash";
-  const DEFAULT_API_KEY = (window.PRESET_KEYS && window.PRESET_KEYS[0]) || "";
+  let DEFAULT_DB_URL = "";
+  let DEFAULT_MODEL = "gemini-3.6-flash";
+  let DEFAULT_API_KEY = "";
+  let PRESET_KEYS = [];
 
-  // Inputs & Primary Buttons
+  // DOM Elements - Primary Controls
   const aiPrompt = document.getElementById('aiPrompt');
   const sqlQueryTextarea = document.getElementById('sqlQuery');
   const translateBtn = document.getElementById('translateBtn');
@@ -14,7 +14,29 @@ document.addEventListener('DOMContentLoaded', () => {
   const luckyBtn = document.getElementById('luckyBtn');
   const clearHistoryBtn = document.getElementById('clearHistoryBtn');
 
-  // CodeMirror Initialization
+  // DOM Elements - Status & Stats
+  const transStatus = document.getElementById('transStatus');
+  const transTime = document.getElementById('transTime');
+  const tokensTotal = document.getElementById('tokensTotal');
+  const execStatus = document.getElementById('execStatus');
+  const execTime = document.getElementById('execTime');
+  const execRows = document.getElementById('execRows');
+
+  // DOM Elements - Config Modal & Connection Status
+  const configModal = document.getElementById('configModal');
+  const configBtn = document.getElementById('configBtn');
+  const modalCloseBtn = document.getElementById('modalCloseBtn');
+  const configSaveBtn = document.getElementById('configSaveBtn');
+  const configResetBtn = document.getElementById('configResetBtn');
+  const connDbName = document.getElementById('connDbName');
+  const connDbUser = document.getElementById('connDbUser');
+
+  // DOM Elements - Results Table & Tabs
+  const resultsTabsNav = document.getElementById('resultsTabsNav');
+  const resultsHeader = document.getElementById('resultsHeader');
+  const resultsBody = document.getElementById('resultsBody');
+
+  // CodeMirror Setup
   let sqlEditor = null;
   if (sqlQueryTextarea && window.CodeMirror) {
     sqlEditor = window.CodeMirror.fromTextArea(sqlQueryTextarea, {
@@ -42,27 +64,37 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Stats Display
-  const transStatus = document.getElementById('transStatus');
-  const transTime = document.getElementById('transTime');
-  const tokensTotal = document.getElementById('tokensTotal');
-  const execStatus = document.getElementById('execStatus');
-  const execTime = document.getElementById('execTime');
-  const execRows = document.getElementById('execRows');
+  async function fetchBackendConfig() {
+    try {
+      const response = await fetch('/api/config');
+      const data = await response.json();
 
-  // Configuration Modal Elements
-  const configModal = document.getElementById('configModal');
-  const configBtn = document.getElementById('configBtn');
-  const configCloseBtn = document.getElementById('modalCloseBtn');
-  const configSaveBtn = document.getElementById('configSaveBtn');
-  const configResetBtn = document.getElementById('configResetBtn');
+      DEFAULT_DB_URL = data.default_database_url || "";
+      DEFAULT_MODEL = data.default_model || "gemini-3.6-flash";
+      PRESET_KEYS = data.preset_keys || [];
+      DEFAULT_API_KEY = PRESET_KEYS[0] || "";
 
-  const modalDbUrl = document.getElementById('modalDbUrl');
-  const modalCustomApiKey = document.getElementById('modalCustomApiKey');
+      initializeApiKeyUI();
 
-  const resultsTabsNav = document.getElementById('resultsTabsNav');
-  const resultsHeader = document.getElementById('resultsHeader');
-  const resultsBody = document.getElementById('resultsBody');
+      // Save defaults to localStorage if missing
+      if (!localStorage.getItem('crbot_model')) {
+        localStorage.setItem('crbot_model', DEFAULT_MODEL);
+      }
+      if (!localStorage.getItem('crbot_api_key') && DEFAULT_API_KEY) {
+        localStorage.setItem('crbot_api_key', DEFAULT_API_KEY);
+      }
+      if (!localStorage.getItem('crbot_db_url') && DEFAULT_DB_URL) {
+        localStorage.setItem('crbot_db_url', DEFAULT_DB_URL);
+      }
+
+      loadConfigIntoUI();
+
+      // Trigger the standard save workflow on load to initialize state
+      await triggerConfigSave({ closeModal: false });
+    } catch (err) {
+      console.error("Failed to fetch backend configuration:", err);
+    }
+  }
 
   function loadConfig() {
     return {
@@ -82,17 +114,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const group = document.getElementById('modalApiKeyGroup');
     if (!group) return;
 
-    if (window.PRESET_KEYS && Array.isArray(window.PRESET_KEYS) && window.PRESET_KEYS.length > 0) {
+    if (PRESET_KEYS.length > 0) {
       const customOption = Array.from(group.querySelectorAll('.radio-option'))
         .find(opt => opt.querySelector('input[value="custom"]'));
 
-      // Remove existing preset options if any
       group.querySelectorAll('.radio-option').forEach(opt => {
         if (opt !== customOption) opt.remove();
       });
 
-      // Dynamically prepend preset keys
-      window.PRESET_KEYS.forEach(key => {
+      PRESET_KEYS.forEach(key => {
         let label = key;
         if (key.length > 12) {
           label = key.substring(0, 4) + "..." + key.substring(key.length - 5);
@@ -121,14 +151,12 @@ document.addEventListener('DOMContentLoaded', () => {
   function unmaskConnectionDbUrl(inputValue, originalValue) {
     if (!inputValue) return "";
     if (inputValue.includes("****")) {
-      // First try to resolve using DEFAULT_DB_URL
       if (DEFAULT_DB_URL) {
         const defaultMatch = DEFAULT_DB_URL.match(/^(postgresql:\/\/[^:]+):([^@]+)(@.+)$/);
         if (defaultMatch) {
           return inputValue.replace("****", defaultMatch[2]);
         }
       }
-      // Fallback to originalValue (current config in localStorage)
       if (originalValue) {
         const origMatch = originalValue.match(/^(postgresql:\/\/[^:]+):([^@]+)(@.+)$/);
         if (origMatch) {
@@ -141,12 +169,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function loadConfigIntoUI() {
     const config = loadConfig();
-    const modelRadio = document.querySelector(`input[name="gemini_model"][value="${config.model}"]`);
-    if (modelRadio) modelRadio.checked = true;
 
-    if (modalDbUrl) modalDbUrl.value = maskConnectionDbUrl(config.dbUrl);
+    // 1. Model Radio Selection (Defaults to gemini-3.6-flash or the last radio option)
+    const modelRadios = document.querySelectorAll('input[name="gemini_model"]');
+    modelRadios.forEach(r => r.checked = false);
+
+    let matchingModelRadio = document.querySelector(`input[name="gemini_model"][value="${config.model}"]`);
+    if (matchingModelRadio) {
+      matchingModelRadio.checked = true;
+    } else if (modelRadios.length > 0) {
+      // Fallback: If no exact match found, select the last radio choice (gemini-3.6-flash)
+      modelRadios[modelRadios.length - 1].checked = true;
+    }
+
+    // 2. Set DB URL input
+    const modalDbUrl = document.getElementById('modalDbUrl');
+    if (modalDbUrl) {
+      modalDbUrl.value = maskConnectionDbUrl(config.dbUrl);
+    }
+
+    // 3. API Key Selection
+    const apiKeyRadios = document.querySelectorAll('input[name="api_key_choice"]');
+    apiKeyRadios.forEach(r => r.checked = false);
 
     const apiKeyRadio = document.querySelector(`input[name="api_key_choice"][value="${config.apiKey}"]`);
+    const modalCustomApiKey = document.getElementById('modalCustomApiKey');
+
     if (apiKeyRadio) {
       apiKeyRadio.checked = true;
       if (modalCustomApiKey) modalCustomApiKey.classList.add('hidden');
@@ -157,14 +205,14 @@ document.addEventListener('DOMContentLoaded', () => {
         modalCustomApiKey.value = config.apiKey;
         modalCustomApiKey.classList.remove('hidden');
       }
+    } else if (apiKeyRadios.length > 0) {
+      apiKeyRadios[0].checked = true;
+      if (modalCustomApiKey) modalCustomApiKey.classList.add('hidden');
     }
   }
 
   async function updateConnectionDetails() {
     const config = loadConfig();
-    const connDbName = document.getElementById('connDbName');
-    const connDbUser = document.getElementById('connDbUser');
-
     try {
       const response = await fetch(`/api/config?database_url=${encodeURIComponent(config.dbUrl)}`);
       const data = await response.json();
@@ -173,334 +221,46 @@ document.addEventListener('DOMContentLoaded', () => {
         const dbName = data.database_name;
         const username = data.username;
 
-        // Update DOM Spans
         if (connDbName) connDbName.textContent = dbName;
         if (connDbUser) connDbUser.textContent = username;
 
-        // Update Browser Window / Tab Title
-        document.title = `CRBot : Talk to your CockroachDB. You are currently connected to ${dbName} as ${username}`;
+        document.title = `CRBot : Talk to your CockroachDB. Connected to ${dbName} as ${username}`;
       }
     } catch (err) {
       console.error("Failed to fetch connection metadata:", err);
     }
   }
 
-  // Initialize UI configuration and fetch dynamic connection details
-  initializeApiKeyUI();
-  loadConfigIntoUI();
-  updateConnectionDetails();
-
-  document.getElementById('modalApiKeyGroup')?.addEventListener('change', (e) => {
-    if (e.target.name === 'api_key_choice' && modalCustomApiKey) {
-      modalCustomApiKey.classList.toggle('hidden', e.target.value !== 'custom');
-    }
-  });
-
-  function renderSqlErrorInResults(title, errorMessage, sqlQuery = '') {
-    if (!resultsBody) return;
-    if (resultsTabsNav) resultsTabsNav.classList.add('hidden');
-
-    const sanitize = (str) => (str || '').replace(/[&<>"']/g, (m) => ({
-      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
-    }[m]));
-
-    let positionHint = '';
-    const posMatch = errorMessage.match(/POSITION:\s*(\d+)/i) || errorMessage.match(/at or near "([^"]+)"/i);
-    if (posMatch) {
-      positionHint = `Parsing Hint: Failure detected ${posMatch[0]}`;
+  // --- Reusable Save Helper ---
+  async function triggerConfigSave(options = { closeModal: true }) {
+    const selectedModel = document.querySelector('input[name="gemini_model"]:checked')?.value || DEFAULT_MODEL;
+    const selectedApiKeyChoice = document.querySelector('input[name="api_key_choice"]:checked')?.value;
+    const modalCustomApiKey = document.getElementById('modalCustomApiKey');
+    
+    let apiKey = DEFAULT_API_KEY;
+    if (selectedApiKeyChoice === 'custom' && modalCustomApiKey) {
+      apiKey = modalCustomApiKey.value.trim();
+    } else if (selectedApiKeyChoice) {
+      apiKey = selectedApiKeyChoice;
     }
 
-    resultsHeader.innerHTML = '';
-    resultsBody.innerHTML = `
-      <tr>
-        <td colspan="100%" class="error-cell">
-          <div class="results-error-banner sql-parse-error">
-            <div class="error-header">
-              <span class="error-icon">❌</span>
-              <strong>${sanitize(title)}</strong>
-              ${positionHint ? `<span class="error-badge">${sanitize(positionHint)}</span>` : ''}
-            </div>
-            
-            <div class="error-body">
-              <div class="error-message">${sanitize(errorMessage)}</div>
-              ${sqlQuery ? `
-                <div class="error-sql-preview">
-                  <span class="preview-label">Failed Query:</span>
-                  <pre><code>${sanitize(sqlQuery)}</code></pre>
-                </div>
-              ` : ''}
-            </div>
-          </div>
-        </td>
-      </tr>
-    `;
+    const modalDbUrlInput = document.getElementById('modalDbUrl')?.value.trim() || "";
+    const currentConfig = loadConfig();
+    const unmaskedDbUrl = unmaskConnectionDbUrl(modalDbUrlInput, currentConfig.dbUrl);
+
+    // Save state
+    saveConfig(selectedModel, apiKey, unmaskedDbUrl);
+
+    // Conditionally hide modal
+    if (options.closeModal && configModal) {
+      configModal.classList.add('hidden');
+    }
+
+    // Refresh connection status / header title
+    await updateConnectionDetails();
   }
 
-  async function translatePrompt() {
-    const promptText = aiPrompt ? aiPrompt.value.trim() : '';
-    if (!promptText) return null;
-
-    const config = loadConfig();
-
-    if (transStatus) {
-      transStatus.textContent = 'Translating...';
-      transStatus.className = 'stat-val status-working';
-    }
-
-    try {
-      const response = await fetch('/api/translate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt: promptText,
-          gemini_model: config.model,
-          api_key: config.apiKey,
-          database_url: config.dbUrl,
-          history: chatHistory
-        })
-      });
-
-      const data = await response.json().catch(() => ({}));
-
-      if (response.ok && data.success && data.sql) {
-        chatHistory.push({ role: 'user', text: promptText });
-        chatHistory.push({ role: 'model', text: data.sql });
-
-        const MAX_TURNS = 5;
-        if (chatHistory.length > MAX_TURNS * 2) {
-          chatHistory = chatHistory.slice(-MAX_TURNS * 2);
-        }
-
-        let formattedSQL = data.sql;
-        if (window.sqlFormatter) {
-          try {
-            formattedSQL = window.sqlFormatter.format(data.sql, {
-              language: 'postgresql',
-              keywordCase: 'upper',
-              tabWidth: 2
-            });
-          } catch (e) {
-            console.warn('SQL formatting failed, displaying raw SQL', e);
-          }
-        }
-
-        setSqlQuery(formattedSQL);
-
-        if (transStatus) {
-          transStatus.textContent = 'Success';
-          transStatus.className = 'stat-val status-success';
-        }
-        if (transTime) transTime.textContent = `${data.duration || '--'} ms`;
-        if (tokensTotal) tokensTotal.textContent = data.total_tokens || '--';
-
-        return data.sql;
-      } else {
-        const geminiError = data.error || data.message || `HTTP ${response.status}: Gemini Translation Failed`;
-        throw new Error(geminiError);
-      }
-    } catch (err) {
-      if (transStatus) {
-        transStatus.textContent = 'Error';
-        transStatus.className = 'stat-val status-error';
-      }
-      renderSqlErrorInResults('Gemini Translation Error', err.message);
-      return null;
-    }
-  }
-
-  async function executeSQL(customSQL = null) {
-    const queryText = customSQL || getSqlQuery();
-    if (!queryText) return;
-
-    const config = loadConfig();
-
-    if (execStatus) {
-      execStatus.textContent = 'Running...';
-      execStatus.className = 'stat-val status-working';
-    }
-
-    try {
-      const response = await fetch('/api/execute', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sql: queryText,
-          database_url: config.dbUrl
-        })
-      });
-
-      const data = await response.json().catch(() => ({}));
-
-      if (response.ok && data.success) {
-        if (execStatus) {
-          execStatus.textContent = 'Success';
-          execStatus.className = 'stat-val status-success';
-        }
-        if (execTime) execTime.textContent = `${data.executionTimeMs || '--'} ms`;
-        if (execRows) execRows.textContent = data.rowCount ?? '--';
-
-        renderResultsTabs(data.results || []);
-      } else {
-        const execError = data.error || data.message || `HTTP ${response.status}: Query Execution Failed`;
-        throw new Error(execError);
-      }
-    } catch (err) {
-      if (execStatus) {
-        execStatus.textContent = 'Error';
-        execStatus.className = 'stat-val status-error';
-      }
-      renderSqlErrorInResults('SQL Parse / Execution Error', err.message, queryText);
-    }
-  }
-
-  function renderResultsTabs(resultSets) {
-    if (!resultsTabsNav || !resultsHeader || !resultsBody) return;
-
-    resultsTabsNav.innerHTML = '';
-    resultsHeader.innerHTML = '';
-    resultsBody.innerHTML = '';
-
-    if (!resultSets || resultSets.length === 0) {
-      resultsTabsNav.classList.add('hidden');
-      resultsBody.innerHTML = '<tr><td class="no-data">No results returned.</td></tr>';
-      return;
-    }
-
-    function displayResultSet(res) {
-      resultsHeader.innerHTML = '';
-      resultsBody.innerHTML = '';
-
-      if (res.columns && res.columns.length > 0) {
-        res.columns.forEach(col => {
-          const th = document.createElement('th');
-          th.textContent = col;
-          resultsHeader.appendChild(th);
-        });
-
-        if (res.rows && res.rows.length > 0) {
-          res.rows.forEach(row => {
-            const tr = document.createElement('tr');
-            res.columns.forEach(col => {
-              const td = document.createElement('td');
-              const val = row[col];
-
-              if (val === null || val === undefined) {
-                td.textContent = 'NULL';
-                td.classList.add('cell-null');
-              } else if (typeof val === 'object') {
-                td.textContent = JSON.stringify(val, null, 2);
-                td.classList.add('cell-multiline');
-              } else {
-                let stringVal = String(val);
-
-                // Convert escaped literal '\n' sequences into actual newline characters
-                if (stringVal.includes('\\n')) {
-                  stringVal = stringVal.replace(/\\n/g, '\n');
-                }
-
-                td.textContent = stringVal;
-
-                // Add multiline class if actual or converted newlines exist
-                if (stringVal.includes('\n') || stringVal.includes('\r')) {
-                  td.classList.add('cell-multiline');
-                }
-              }
-
-              tr.appendChild(td);
-            });
-            resultsBody.appendChild(tr);
-          });
-        } else {
-          resultsBody.innerHTML = `<tr><td colspan="${res.columns.length}" class="no-data">Statement executed successfully with no returned rows.</td></tr>`;
-        }
-      } else {
-        resultsBody.innerHTML = `<tr><td class="no-data">${res.statement || 'Query executed successfully.'} (Affected rows: ${res.rowCount})</td></tr>`;
-      }
-    }
-
-    if (resultSets.length > 1) {
-      resultsTabsNav.classList.remove('hidden');
-
-      resultSets.forEach((res, index) => {
-        const tabBtn = document.createElement('button');
-        tabBtn.className = `result-tab-btn ${index === 0 ? 'active' : ''}`;
-        if (res.statement) {
-          tabBtn.title = res.statement;
-        }
-
-        const titleSpan = document.createElement('span');
-        titleSpan.className = 'result-tab-title';
-        titleSpan.textContent = `Result ${index + 1}`;
-        tabBtn.appendChild(titleSpan);
-
-        if (res.rowCount !== undefined) {
-          const badgeSpan = document.createElement('span');
-          badgeSpan.className = 'result-tab-badge';
-          badgeSpan.textContent = `(${res.rowCount})`;
-          tabBtn.appendChild(badgeSpan);
-        }
-
-        const flareRight = document.createElement('span');
-        flareRight.className = 'result-tab-flare-right';
-        tabBtn.appendChild(flareRight);
-
-        tabBtn.addEventListener('click', () => {
-          document.querySelectorAll('.result-tab-btn').forEach(b => b.classList.remove('active'));
-          tabBtn.classList.add('active');
-          displayResultSet(res);
-        });
-
-        resultsTabsNav.appendChild(tabBtn);
-      });
-    } else {
-      resultsTabsNav.classList.add('hidden');
-    }
-
-    displayResultSet(resultSets[0]);
-  }
-
-  if (translateBtn) translateBtn.addEventListener('click', () => translatePrompt());
-  if (runBtn) runBtn.addEventListener('click', () => executeSQL());
-
-  if (luckyBtn) {
-    luckyBtn.addEventListener('click', async () => {
-      try {
-        const sql = await translatePrompt();
-        if (sql) await executeSQL(sql);
-      } catch (err) {
-        renderSqlErrorInResults('Workflow Error', err.message);
-      }
-    });
-  }
-
-  if (clearHistoryBtn) {
-    clearHistoryBtn.addEventListener('click', () => {
-      chatHistory = [];
-      if (transStatus) {
-        transStatus.textContent = 'History Cleared';
-        transStatus.className = 'stat-val status-unknown';
-      }
-    });
-  }
-
-  if (aiPrompt) {
-    aiPrompt.addEventListener('input', () => {
-      setSqlQuery('');
-      if (transStatus) {
-        transStatus.textContent = 'Ready';
-        transStatus.className = 'stat-val status-unknown';
-      }
-      if (transTime) transTime.textContent = '—';
-      if (tokensTotal) tokensTotal.textContent = '—';
-
-      if (execStatus) {
-        execStatus.textContent = 'Ready';
-        execStatus.className = 'stat-val status-unknown';
-      }
-      if (execTime) execTime.textContent = '—';
-      if (execRows) execRows.textContent = '—';
-    });
-  }
+  // --- Configuration Modal Listeners ---
 
   if (configBtn && configModal) {
     configBtn.addEventListener('click', () => {
@@ -509,63 +269,357 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  const closeModal = () => {
-    if (configModal) configModal.classList.add('hidden');
-  };
-
-  if (configCloseBtn) configCloseBtn.addEventListener('click', closeModal);
-
-  if (configSaveBtn) {
-    configSaveBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      const selectedModel = document.querySelector('input[name="gemini_model"]:checked')?.value || DEFAULT_MODEL;
-      const keyChoice = document.querySelector('input[name="api_key_choice"]:checked')?.value;
-      
-      let apiKey = keyChoice;
-      if (keyChoice === 'custom' && modalCustomApiKey) {
-        apiKey = modalCustomApiKey.value.trim();
-      }
-
-      const inputDbUrl = modalDbUrl ? modalDbUrl.value.trim() : '';
-      const config = loadConfig();
-      const dbUrl = unmaskConnectionDbUrl(inputDbUrl, config.dbUrl);
-
-      saveConfig(selectedModel, apiKey, dbUrl);
-      updateConnectionDetails();
-      closeModal();
+  if (modalCloseBtn && configModal) {
+    modalCloseBtn.addEventListener('click', () => {
+      configModal.classList.add('hidden');
     });
   }
 
-  if (configResetBtn) {
-    configResetBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      // Revert Model UI
-      const modelRadio = document.querySelector(`input[name="gemini_model"][value="${DEFAULT_MODEL}"]`);
-      if (modelRadio) modelRadio.checked = true;
-
-      // Revert Database URL UI (with masking applied)
-      if (modalDbUrl) {
-        modalDbUrl.value = maskConnectionDbUrl(DEFAULT_DB_URL);
-      }
-
-      // Revert API Key Choice UI (checks preset radio or falls back to custom)
-      const apiKeyRadio = document.querySelector(`input[name="api_key_choice"][value="${DEFAULT_API_KEY}"]`);
-      if (apiKeyRadio) {
-        apiKeyRadio.checked = true;
-        if (modalCustomApiKey) modalCustomApiKey.classList.add('hidden');
-      } else {
-        const customRadio = document.querySelector('input[name="api_key_choice"][value="custom"]');
-        if (customRadio) customRadio.checked = true;
-        if (modalCustomApiKey) {
-          modalCustomApiKey.value = DEFAULT_API_KEY;
+  document.addEventListener('change', (e) => {
+    if (e.target && e.target.name === 'api_key_choice') {
+      const modalCustomApiKey = document.getElementById('modalCustomApiKey');
+      if (modalCustomApiKey) {
+        if (e.target.value === 'custom') {
           modalCustomApiKey.classList.remove('hidden');
+        } else {
+          modalCustomApiKey.classList.add('hidden');
         }
       }
+    }
+  });
 
-      // Directly save defaults to localStorage, update connection status, and close popup
-      saveConfig(DEFAULT_MODEL, DEFAULT_API_KEY, DEFAULT_DB_URL);
-      updateConnectionDetails();
-      closeModal();
+  if (configSaveBtn) {
+    configSaveBtn.addEventListener('click', async () => {
+      await triggerConfigSave({ closeModal: true });
     });
   }
+
+  // --- Reset Defaults Handler ---
+  if (configResetBtn) {
+    configResetBtn.addEventListener('click', async () => {
+      // Clear storage
+      localStorage.removeItem('crbot_model');
+      localStorage.removeItem('crbot_api_key');
+      localStorage.removeItem('crbot_db_url');
+
+      // Sync UI inputs back to system defaults
+      loadConfigIntoUI();
+
+      // Save reset defaults into storage without dismissing modal
+      await triggerConfigSave({ closeModal: false });
+    });
+  }
+
+  // --- Table & Multi-Tab Rendering Helpers ---
+
+  function renderTableResult(result) {
+    if (!resultsHeader || !resultsBody) return;
+    resultsHeader.innerHTML = '';
+    resultsBody.innerHTML = '';
+
+    if (!result || (!result.columns && !result.rows)) {
+      resultsBody.innerHTML = `<tr><td class="text-center text-muted py-8">Statement executed successfully. No dataset returned.</td></tr>`;
+      return;
+    }
+
+    if (result.columns && result.columns.length > 0) {
+      result.columns.forEach(col => {
+        const th = document.createElement('th');
+        th.textContent = col;
+        resultsHeader.appendChild(th);
+      });
+    }
+
+    if (result.rows && result.rows.length > 0) {
+      result.rows.forEach(row => {
+        const tr = document.createElement('tr');
+        result.columns.forEach(col => {
+          const td = document.createElement('td');
+          const val = row[col];
+          td.textContent = val !== null && val !== undefined ? val : 'NULL';
+          if (val === null || val === undefined) td.classList.add('text-null');
+          tr.appendChild(td);
+        });
+        resultsBody.appendChild(tr);
+      });
+    } else {
+      resultsBody.innerHTML = `<tr><td colspan="${result.columns ? result.columns.length : 1}" class="text-center text-muted py-8">0 rows returned.</td></tr>`;
+    }
+  }
+
+  function renderMultiTurnResults(results) {
+    if (!resultsTabsNav) return;
+    resultsTabsNav.innerHTML = '';
+
+    if (!results || results.length === 0) {
+      resultsTabsNav.classList.add('hidden');
+      renderTableResult(null);
+      return;
+    }
+
+    if (results.length === 1) {
+      resultsTabsNav.classList.add('hidden');
+      renderTableResult(results[0]);
+      return;
+    }
+
+    resultsTabsNav.classList.remove('hidden');
+    results.forEach((res, idx) => {
+      const btn = document.createElement('button');
+      btn.className = `result-tab-btn ${idx === 0 ? 'active' : ''}`;
+      
+      const sqlText = res.query || res.sql || res.statement || '';
+      if (sqlText) {
+        btn.setAttribute('title', sqlText);
+      }
+
+      const count = res.rowCount !== undefined ? res.rowCount : (res.rows ? res.rows.length : 0);
+      btn.textContent = `Query ${idx + 1} (${count})`;
+
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.result-tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        renderTableResult(res);
+      });
+      resultsTabsNav.appendChild(btn);
+    });
+
+    renderTableResult(results[0]);
+  }
+
+  // --- Translation & Execution Logic ---
+  async function translatePrompt() {
+    const promptText = aiPrompt ? aiPrompt.value.trim() : "";
+    if (!promptText) return;
+
+    if (transStatus) {
+      transStatus.textContent = "Working...";
+      transStatus.className = "stat-val status-working";
+    }
+
+    const config = loadConfig();
+    try {
+      const response = await fetch('/api/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: promptText,
+          history: chatHistory,
+          gemini_model: config.model,
+          api_key: config.apiKey,
+          database_url: config.dbUrl
+        })
+      });
+
+      const data = await response.json();
+      if (response.ok && data.sql) {
+        setSqlQuery(data.sql);
+
+        if (transStatus) {
+          transStatus.textContent = "Success";
+          transStatus.className = "stat-val status-success";
+        }
+        if (transTime) transTime.textContent = `${data.duration} ms`;
+        if (tokensTotal) tokensTotal.textContent = data.total_tokens || "—";
+      } else {
+        // 1. Empty SQL box
+        setSqlQuery('');
+
+        // 2. Translation Stats: "Error" + Dashes
+        if (transStatus) {
+          transStatus.textContent = "Error";
+          transStatus.className = "stat-val status-error";
+        }
+        if (transTime) transTime.textContent = "—";
+        if (tokensTotal) tokensTotal.textContent = "—";
+
+        // 3. Execution Stats: "Ready" + Dashes
+        if (execStatus) {
+          execStatus.textContent = "Ready";
+          execStatus.className = "stat-val";
+        }
+        if (execTime) execTime.textContent = "—";
+        if (execRows) execRows.textContent = "—";
+
+        console.error("Translation Error:", data.error || "Unknown error");
+
+        // Display translation error in the results body & hide tabs
+        if (resultsTabsNav) resultsTabsNav.classList.add('hidden');
+        if (resultsHeader) resultsHeader.innerHTML = '';
+        if (resultsBody) {
+          resultsBody.innerHTML = `
+            <tr>
+              <td class="error-cell">
+                <div class="error-container">
+                  <span class="error-icon">⚠️</span>
+                  <div class="error-details">
+                    <strong>Translation Error</strong>
+                    <p>${data.error || "An error occurred during translation."}</p>
+                  </div>
+                </div>
+              </td>
+            </tr>`;
+        }
+      }
+    } catch (err) {
+      // 1. Empty SQL box
+      setSqlQuery('');
+
+      // 2. Translation Stats: "Error" + Dashes
+      if (transStatus) {
+        transStatus.textContent = "Error";
+        transStatus.className = "stat-val status-error";
+      }
+      if (transTime) transTime.textContent = "—";
+      if (tokensTotal) tokensTotal.textContent = "—";
+
+      // 3. Execution Stats: "Ready" + Dashes
+      if (execStatus) {
+        execStatus.textContent = "Ready";
+        execStatus.className = "stat-val";
+      }
+      if (execTime) execTime.textContent = "—";
+      if (execRows) execRows.textContent = "—";
+
+      console.error("Failed to translate prompt:", err);
+
+      // Display fetch/network translation error in the results body & hide tabs
+      if (resultsTabsNav) resultsTabsNav.classList.add('hidden');
+      if (resultsHeader) resultsHeader.innerHTML = '';
+      if (resultsBody) {
+        resultsBody.innerHTML = `
+          <tr>
+            <td class="error-cell">
+              <div class="error-container">
+                <span class="error-icon">⚠️</span>
+                <div class="error-details">
+                  <strong>Translation Network Error</strong>
+                  <p>${err.message || "Failed to reach the translation backend server."}</p>
+                </div>
+              </div>
+            </td>
+          </tr>`;
+      }
+    }
+  }
+
+  async function executeSql() {
+    const sql = getSqlQuery();
+    if (!sql) return;
+
+    if (execStatus) {
+      execStatus.textContent = "Executing...";
+      execStatus.className = "stat-val status-working";
+    }
+
+    const config = loadConfig();
+    try {
+      const response = await fetch('/api/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sql: sql,
+          database_url: config.dbUrl
+        })
+      });
+
+      const data = await response.json();
+      if (response.ok && data.success) {
+        if (execStatus) {
+          execStatus.textContent = "Success";
+          execStatus.className = "stat-val status-success";
+        }
+        if (execTime) execTime.textContent = `${data.executionTimeMs} ms`;
+        if (execRows) execRows.textContent = data.rowCount;
+
+        if (aiPrompt && aiPrompt.value.trim()) {
+          chatHistory.push({
+            role: 'user',
+            text: aiPrompt.value.trim()
+          });
+          chatHistory.push({
+            role: 'model',
+            text: sql
+          });
+        }
+
+        renderMultiTurnResults(data.results);
+      } else {
+        if (execStatus) {
+          execStatus.textContent = "Error";
+          execStatus.className = "stat-val status-error";
+        }
+        if (resultsBody) {
+          resultsBody.innerHTML = `
+            <tr>
+              <td class="error-cell">
+                <div class="error-container">
+                  <span class="error-icon">⚠️</span>
+                  <div class="error-details">
+                    <strong>Execution Error</strong>
+                    <p>${data.error || "An error occurred during SQL execution."}</p>
+                  </div>
+                </div>
+              </td>
+            </tr>`;
+        }
+      }
+    } catch (err) {
+      if (execStatus) {
+        execStatus.textContent = "Error";
+        execStatus.className = "stat-val status-error";
+      }
+      console.error("Failed to execute SQL:", err);
+    }
+  }
+
+  // --- Button Event Bindings ---
+
+  if (aiPrompt) {
+    aiPrompt.addEventListener('input', () => {
+      // 1. Empty SQL box
+      setSqlQuery('');
+
+      // 2. Translation Stats: "Ready" + Dashes
+      if (transStatus) {
+        transStatus.textContent = "Ready";
+        transStatus.className = "stat-val";
+      }
+      if (transTime) transTime.textContent = "—";
+      if (tokensTotal) tokensTotal.textContent = "—";
+
+      // 3. Execution Stats: "Ready" + Dashes
+      if (execStatus) {
+        execStatus.textContent = "Ready";
+        execStatus.className = "stat-val";
+      }
+      if (execTime) execTime.textContent = "—";
+      if (execRows) execRows.textContent = "—";
+    });
+  }
+
+  if (translateBtn) translateBtn.addEventListener('click', translatePrompt);
+  if (runBtn) runBtn.addEventListener('click', executeSql);
+
+  if (luckyBtn) {
+    luckyBtn.addEventListener('click', async () => {
+      await translatePrompt();
+      await executeSql();
+    });
+  }
+
+  if (clearHistoryBtn) {
+    clearHistoryBtn.addEventListener('click', () => {
+      chatHistory = [];
+      setSqlQuery('');
+      if (aiPrompt) aiPrompt.value = '';
+      if (transStatus) transStatus.textContent = "Ready";
+      if (execStatus) execStatus.textContent = "Ready";
+      if (resultsHeader) resultsHeader.innerHTML = '';
+      if (resultsBody) resultsBody.innerHTML = '<tr><td class="text-center text-muted py-8">The answer will be displayed here.</td></tr>';
+      if (resultsTabsNav) resultsTabsNav.classList.add('hidden');
+    });
+  }
+
+  await fetchBackendConfig();
 });

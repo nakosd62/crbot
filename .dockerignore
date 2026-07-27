@@ -1,0 +1,25 @@
+# Ignore Git repository
+.git/
+.gitignore
+
+# Ignore local virtual environment
+venv/
+
+# Ignore local configuration files containing secrets
+frontend/config.js
+
+# Ignore bash scripts containing secrets
+launch_app.sh
+kill_app.sh
+
+# Ignore log files
+*.log
+
+# Ignore local Python cache and temporary files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*-save*
+*.save
+.DS_Store
