@@ -58,7 +58,6 @@ sleep 2
 # 4. Handle ngrok dependency gracefully
 if command -v ngrok &> /dev/null; then
     echo "Starting ngrok..."
-    echo "nohup ngrok http 127.0.0.1:$CRBOT_PORT > ngrok.log 2>&1 &"
     nohup ngrok http 127.0.0.1:$CRBOT_PORT > ngrok.log 2>&1 &
 else
     echo "Notice: ngrok command not found. Skipping ngrok tunnel."
