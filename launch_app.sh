@@ -2,7 +2,6 @@
 
 export CRBOT_HOSTNAME="0.0.0.0"
 export CRBOT_PORT="3000"
-export GEMINI_API_KEY=""
 
 # 1. Setup Virtual Environment if missing
 if [ ! -d "venv" ]; then
@@ -50,15 +49,17 @@ if command -v lsof &> /dev/null; then
 fi
 pkill -9 -f "app.py" 2>/dev/null
 pkill -9 -f "ngrok http" 2>/dev/null
-sleep 1
+sleep 2
 
 echo "Starting Flask server..."
 nohup ./venv/bin/python3 app.py > app.log 2>&1 &
+sleep 2
 
 # 4. Handle ngrok dependency gracefully
 if command -v ngrok &> /dev/null; then
     echo "Starting ngrok..."
-    nohup ngrok http $CRBOT_PORT > ngrok.log 2>&1 &
+    echo "nohup ngrok http 127.0.0.1:$CRBOT_PORT > ngrok.log 2>&1 &"
+    nohup ngrok http 127.0.0.1:$CRBOT_PORT > ngrok.log 2>&1 &
 else
     echo "Notice: ngrok command not found. Skipping ngrok tunnel."
     echo "The application is running locally at http://localhost:$CRBOT_PORT"
