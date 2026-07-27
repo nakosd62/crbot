@@ -5,9 +5,6 @@
 # Ignore local virtual environment
 venv/
 
-# Ignore local configuration files containing secrets
-frontend/config.js
-
 # Ignore bash scripts containing secrets
 launch_app.sh
 kill_app.sh

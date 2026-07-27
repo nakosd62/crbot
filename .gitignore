@@ -21,3 +21,4 @@ gcp_deploy.sh
 
 # Local config files
 .env
+.crdb.crt

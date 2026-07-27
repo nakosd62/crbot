@@ -337,6 +337,10 @@ document.addEventListener('DOMContentLoaded', async () => {
           const td = document.createElement('td');
           const val = row[col];
           td.textContent = val !== null && val !== undefined ? val : 'NULL';
+          
+          // Add multiline formatting class so CSS white-space: pre-wrap takes effect
+          td.classList.add('cell-multiline');
+    
           if (val === null || val === undefined) td.classList.add('text-null');
           tr.appendChild(td);
         });

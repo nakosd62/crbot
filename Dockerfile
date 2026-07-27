@@ -16,7 +16,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 # Copy backend files and directories
 COPY app.py .
-COPY utils/ ./utils/
+COPY crdb.crt .
 
 # Copy frontend static files
 COPY frontend/ ./frontend/
