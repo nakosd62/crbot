@@ -11,14 +11,7 @@ __pycache__/
 # macOS system files
 .DS_Store
 
-# Temporary save files
-*-save*
-*.save*
-
-# GCP upload configuration and script files
+# Files containing secrets
 env.yaml
-gcp_deploy.sh
-
-# Local config files
 .env
-.crdb.crt
+crdb.crt

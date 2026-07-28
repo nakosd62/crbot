@@ -8,7 +8,7 @@ venv/
 # Ignore bash scripts containing secrets
 launch_app.sh
 kill_app.sh
-gcp.sh
+gcp_deploy.sh
 .env
 .env-sample
 
