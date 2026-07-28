@@ -221,8 +221,9 @@ textarea:focus {
 
 .btn-control-block {
   width: 100%;
-  padding: 0.3rem 0.75rem;
-  font-size: 0.85rem;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.78rem;
+  line-height: 1.2;
   white-space: nowrap;
 }
 
@@ -480,8 +481,8 @@ textarea:focus {
   transform: none;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), inset 0 0 12px rgba(16, 185, 129, 0.08);
 
-  height: 135px !important; /* Fixed initial height */
-  min-height: 135px;
+  height: 130px !important; /* Fixed initial height */
+  min-height: 130px;
   max-height: 600px !important;
   overflow: hidden !important; /* Prevents container from growing with content */
   resize: vertical; /* Allows manual user dragging only */
@@ -495,12 +496,12 @@ textarea:focus {
 .nl-prompt-row .nl-prompt-controls,
 .sql-prompt-row .avatar-container.robot-avatar,
 .sql-prompt-row .sql-prompt-controls {
-  height: 135px;
+  height: 90px;
 }
 
 /* SQL Row specific wrapper overrides (REMOVED height: auto) */
 .sql-prompt-row .speech-bubble-wrapper.sql-bubble {
-  min-height: 135px;
+  min-height: 130px;
   max-height: 600px;
   resize: vertical;
   overflow: hidden;
@@ -588,7 +589,7 @@ textarea:focus {
 .sql-prompt-controls {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.25rem;
   width: 190px;
   flex-shrink: 0;
 }
@@ -597,10 +598,10 @@ textarea:focus {
   background: rgba(5, 8, 16, 0.5);
   border: 1px solid var(--bg-card-border);
   border-radius: 8px;
-  padding: 0.3rem 0.65rem;
+  padding: 0.15rem 0.5rem;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.15rem;
   font-size: 0.6rem;
   flex: 1;
   justify-content: center;
