@@ -63,7 +63,7 @@ def get_database_schema(conn_str=None):
         if conn:
             conn.close()
 
-def record_translation(nl_prompt, sql_command, gemini_model, duration, input_tokens, output_tokens, total_tokens, thinking_tokens, cached_content_tokens, conn_str=None):
+def record_translation(conn_str, nl_prompt, sql_command, gemini_model, duration, input_tokens, output_tokens, total_tokens, thinking_tokens, cached_content_tokens):
     conn = None
     try:
         conn = get_db_connection(conn_str)
@@ -71,12 +71,12 @@ def record_translation(nl_prompt, sql_command, gemini_model, duration, input_tok
         with conn.cursor() as cursor:
             cursor.execute("""
                 INSERT INTO translations(
-                    nl_prompt, sql_command, model, duration, 
+                    connect_string, nl_prompt, sql_command, model, duration, 
                     input_tokens, output_tokens, total_tokens, 
                     thinking_tokens, cached_content_tokens
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (
-                nl_prompt, sql_command, gemini_model, duration, 
+                conn_str, nl_prompt, sql_command, gemini_model, duration, 
                 input_tokens, output_tokens, total_tokens, 
                 thinking_tokens, cached_content_tokens
             ))
@@ -178,7 +178,7 @@ def translate_query():
         thinking_tokens = getattr(usage, 'thoughts_token_count', 0) if usage else 0
         cached_content_tokens = getattr(usage, 'cached_content_token_count', 0) if usage else 0
 
-        record_translation(prompt, generated_sql, gemini_model, duration, input_tokens, output_tokens, total_tokens, thinking_tokens, cached_content_tokens, conn_str)
+        record_translation(conn_str, prompt, generated_sql, gemini_model, duration, input_tokens, output_tokens, total_tokens, thinking_tokens, cached_content_tokens)
             
         return jsonify({
             'success': True,
