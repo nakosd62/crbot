@@ -9,7 +9,6 @@ CRBot is an interactive, high-fidelity web console and Gemini-powered assistant 
 - **Interactive SQL Console**: Execute arbitrary raw SQL commands against CockroachDB with dynamic table rendering.
 - **Dynamic Database & User Detection**: Live connection status, database name, and username indicators on the dashboard.
 - **Performance & Token Metrics**: Tracks response latency, input/output tokens, thinking tokens, and cached tokens for each translation.
-- **Execution History**: Dropdown list of past queries.
 - **Translation Logging**: Saves prompt and query history in the `translations` table inside your CockroachDB instance.
 
 ---
@@ -74,4 +73,3 @@ Open your browser and navigate to: [http://localhost:3000](http://localhost:3000
 * `app.py`: Flask backend exposing `/api/translate`, `/api/execute`, and `/api/config`.
 * `frontend/`: Static frontend files (`index.html`, `client.js`, `style.css`).
 * `launch_app.sh` & `kill_app.sh`: Automated management scripts.
-* `insert_accounts.py`: Helper script for seeding/mocking account data.
