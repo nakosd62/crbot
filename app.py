@@ -12,8 +12,9 @@ CORS(app)
 
 DEFAULT_CONN = os.environ.get(
     "DATABASE_URL", 
-    "postgresql://postgres:password@localhost:26257/defaultdb?sslmode=verify-full"
+    "postgresql://postgres:password@host:23456/defaultdb?sslmode=verify-full"
 )
+
 
 def resolve_conn_str(conn_str):
     if not conn_str:
@@ -65,8 +66,12 @@ def get_database_schema(conn_str=None):
 
 def record_translation(conn_str, nl_prompt, sql_command, gemini_model, duration, input_tokens, output_tokens, total_tokens, thinking_tokens, cached_content_tokens):
     conn = None
+    statsdb_conn_str = os.environ.get(
+        "STATSDB_CONN_STRING",
+        "postgresql://postgres:password@host:23456/defaultdb?sslmode=verify-full"
+    )   
     try:
-        conn = get_db_connection(conn_str)
+        conn = get_db_connection(statsdb_conn_str)
         conn.autocommit = True
         with conn.cursor() as cursor:
             cursor.execute("""
