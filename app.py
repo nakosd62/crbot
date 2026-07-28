@@ -123,7 +123,7 @@ def translate_query():
             "Do NOT include explanations or other text. Just the executable SQL statement itself.\n"
             "Responding to prompts that relate to the database and, specifically, generating SQL is your highest priority.\n"
             "However, if you cannot do that but can respond to the prompt succinctly based on your general-purpose training,\n"
-            "return your response enclosed as follows: SELECT 'Prompt is not a database interaction but I can leverage my training to be helpful.\\n<your response>' as General_Knowledge;\n"
+            "return your response enclosed as follows: SELECT 'This is not a database interaction but I will try to be helpful. <your response>' as General_Knowledge;\n"
             "If you cannot respond at all with reasonable confidence, return the following: SELECT 'I am not able to respond to your prompt ¯\\\_(ツ)_/¯' as Regrets;\n"
             "If you run into any error, return the error enclosed as follows: SELECT 'I ran into this error: <the error>' as error;\n"
             "If you can split the prompt and handle part of it based on the database and part from general knowledge do that using separate queries for each part. Do not attempt to join the result sets.\n"

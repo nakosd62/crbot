@@ -17,9 +17,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy backend files and directories
 COPY app.py .
 COPY crdb.crt .
-
-# Copy frontend static files
-COPY frontend/ ./frontend/
+COPY frontend/* ./frontend/
 
 # Expose container port (Cloud Run defaults to 8080, but we can configure it)
 EXPOSE 3000
