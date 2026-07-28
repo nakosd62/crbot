@@ -151,7 +151,7 @@ select:focus {
 /* Fixed-Height Results Section */
 .table-card {
   padding: 0.75rem;
-  max-height: 240px;
+  max-height: 280px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
