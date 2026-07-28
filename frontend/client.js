@@ -31,6 +31,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   const connDbName = document.getElementById('connDbName');
   const connDbUser = document.getElementById('connDbUser');
 
+  // DOM Elements - Help Modal
+  const helpModal = document.getElementById('helpModal');
+  const helpBtn = document.getElementById('helpBtn');
+  const helpModalCloseBtn = document.getElementById('helpModalCloseBtn');
+
   // DOM Elements - Results Table & Tabs
   const resultsTabsNav = document.getElementById('resultsTabsNav');
   const resultsHeader = document.getElementById('resultsHeader');
@@ -178,7 +183,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (matchingModelRadio) {
       matchingModelRadio.checked = true;
     } else if (modelRadios.length > 0) {
-      // Fallback: If no exact match found, select the last radio choice (gemini-3.6-flash)
       modelRadios[modelRadios.length - 1].checked = true;
     }
 
@@ -272,6 +276,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (modalCloseBtn && configModal) {
     modalCloseBtn.addEventListener('click', () => {
       configModal.classList.add('hidden');
+    });
+  }
+
+  // --- Help Modal Listeners ---
+
+  if (helpBtn && helpModal) {
+    helpBtn.addEventListener('click', () => {
+      helpModal.classList.remove('hidden');
+    });
+  }
+
+  if (helpModalCloseBtn && helpModal) {
+    helpModalCloseBtn.addEventListener('click', () => {
+      helpModal.classList.add('hidden');
     });
   }
 
@@ -626,4 +644,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   await fetchBackendConfig();
+
+  // Focus the NL prompt box automatically after load
+  if (aiPrompt) aiPrompt.focus();
+  
 });

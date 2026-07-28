@@ -398,7 +398,13 @@ textarea:focus {
   -webkit-text-fill-color: transparent;
 }
 
-.gear-btn {
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.gear-btn, .help-btn {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--bg-card-border);
   color: var(--text-primary);
@@ -409,12 +415,19 @@ textarea:focus {
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 42px;
+  height: 42px;
 }
 
 .gear-btn:hover {
   background: rgba(255, 255, 255, 0.12);
   color: var(--primary);
   transform: rotate(30deg);
+}
+
+.help-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--primary);
 }
 
 .crbot-icon-wrapper {
@@ -451,11 +464,11 @@ textarea:focus {
 .speech-bubble-wrapper {
   position: relative;
   flex: 1;
-  background: #fef6e4;
-  border: 3px solid #2b2319;
-  border-radius: 16px;
+  background: #0f172a;
+  border: 3px solid #334155;
+  border-radius: 0;  /*16px*/
   transform: none;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3), inset 0 0 12px rgba(255, 230, 180, 0.5);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), inset 0 0 12px rgba(16, 185, 129, 0.08);
   padding: 6px;
 }
 
@@ -463,7 +476,7 @@ textarea:focus {
 .speech-bubble-wrapper.sql-bubble {
   background: #0f172a;
   border: 3px solid #334155;
-  border-radius: 16px;
+  border-radius: 0; /*16px*/
   transform: none;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), inset 0 0 12px rgba(16, 185, 129, 0.08);
 
@@ -502,23 +515,24 @@ textarea:focus {
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
-  color: #1e1b18 !important;
-  font-family: 'Comic Sans MS', 'Chalkboard SE', 'Inter', sans-serif;
-  font-size: 0.95rem;
-  font-weight: 600;
+  color: #ffffff !important; /* White for contrast */
+  /*color: #34d399 !important; Green glowing SQL text color */
+  font-family: var(--font-mono) !important; /* Monospace font */
+  font-size: 0.9rem;
   line-height: 1.45;
-  padding: 0.65rem 1rem;
-  resize: none;
+  padding: 0.5rem 0.8rem;
+  resize: none; 
   outline: none;
   transform: none;
-  border-radius: 12px;
+  border-radius: 0; /*12px*/
   box-sizing: border-box;
 }
 
 .speech-bubble-wrapper textarea#aiPrompt::placeholder {
-  color: #786c5e;
+  color: #64748b;
   font-weight: 400;
   font-style: italic;
+  opacity: 0.8;
 }
 
 .speech-bubble-wrapper.sql-bubble textarea#sqlQuery {
@@ -535,7 +549,7 @@ textarea:focus {
   resize: none;
   outline: none;
   transform: none;
-  border-radius: 12px;
+  border-radius: 0; /*12px*/
   box-sizing: border-box;
 }
 
@@ -547,7 +561,7 @@ textarea:focus {
   min-height: 100%; 
   resize: none !important;
   background: transparent !important;
-  border-radius: 10px;
+  border-radius: 0; /*10px*/
   flex: 1 1 auto;
   position: absolute !important;
   top: 0;
@@ -645,6 +659,9 @@ textarea:focus {
   border-radius: 12px;
   width: 100%;
   max-width: 680px;
+  max-height: 85vh; /* Prevents the modal from exceeding viewport height */
+  display: flex; /* Enables flex container layout */
+  flex-direction: column; /* Stacks header and body vertically */
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
   overflow: hidden;
 }
@@ -680,6 +697,26 @@ textarea:focus {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+}
+
+/* Help Dialog Body Formatting */
+.help-dialog-body {
+  line-height: 1.6;
+  color: var(--text-secondary);
+  overflow-y: auto; /* Adds a vertical scrollbar when content exceeds height */
+  max-height: 500px; /* Gives the body a reasonable fixed maximum height */
+  flex: 1; /* Allows the body to scale properly inside the modal card */
+}
+
+.help-dialog-body h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--primary);
+  margin-top: 0.5rem;
+}
+
+.help-dialog-body p {
+  font-size: 0.85rem;
 }
 
 .config-section {

@@ -25,7 +25,7 @@
   <div class="app-container">
     <main class="vertical-layout">
       
-      <!-- Main Header / CRBot Title & Top-Right Gear Button -->
+      <!-- Main Header / CRBot Title & Top-Right Buttons -->
       <div class="crbot-header">
         <div class="crbot-title-group">
           <div class="crbot-icon-wrapper">
@@ -84,16 +84,28 @@
               : Talk to your Database. You are currently connected to 
               <span id="connDbName" style="color: #38bdf8;">--</span> as 
               <span id="connDbUser" style="color: #38bdf8;">--</span>
-            </span>          </h1>
+            </span>
+          </h1>
         </div>
 
-        <!-- Gear Icon Button -->
-        <button id="configBtn" class="gear-btn" title="Configuration Settings">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="3"></circle>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-          </svg>
-        </button>
+        <div class="header-actions">
+          <!-- Help Icon Button -->
+          <button id="helpBtn" class="help-btn" title="Help">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+          </button>
+
+          <!-- Gear Icon Button -->
+          <button id="configBtn" class="gear-btn" title="Configuration">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+          </button>
+        </div>
       </div>
 
       <!-- Section: Main Card Controls -->
@@ -128,10 +140,7 @@
             </div>
 
             <div class="speech-bubble-wrapper">
-              <textarea id="aiPrompt" rows="4" placeholder="Query or manipulate your data and metadata using natural language. For inspiration (only), here are some 
-examples:'find accounts with more than 5000', 'give Mike a $100 bonus', 'allow Dary to read client data'.
-Then click the 'Translate Prompt' button and review the SQL I propose. If you concur, click the 'Execute SQL'.
-If you do not care to inspect the SQL before executing it, click the 'I feel lucky' button (use judiciously)."></textarea>
+              <textarea id="aiPrompt" rows="4" placeholder="Type your question here..."></textarea>
             </div>
 
             <div class="nl-prompt-controls">
@@ -163,7 +172,6 @@ If you do not care to inspect the SQL before executing it, click the 'I feel luc
         </div>
 
         <!-- SQL Command Section -->
-        <!-- <form id="queryForm"> -->
         <div>
           <div class="form-group" style="margin-top: 1.5rem;">
             <div class="sql-prompt-row">
@@ -254,6 +262,38 @@ If you do not care to inspect the SQL before executing it, click the 'I feel luc
         • Questions/comments to <a href="mailto:nakosd@gmail.com">nakosd@gmail.com</a>
       </p>
     </footer>
+  </div>
+
+  <!-- Help Modal Dialog -->
+  <div id="helpModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 class="modal-title">💡 Help & Documentation</h2>
+        <button id="helpModalCloseBtn" class="modal-close-btn" type="button">&times;</button>
+      </div>
+
+      <div class="modal-body help-dialog-body">
+        <p>Welcome to <strong>CRBot</strong>! Here is a quick guide on how to interact with it.</p>
+        
+        <h3>1. General</h3>
+        <p>By default, you are connected to a small sample database called <strong>KitchenBank</strong> as a user called <strong>BankClerk</strong> that you may use as playground.</p>
+        <p>If you prefer to use your own database, click the <strong>gear icon</strong> on the upper right corner to configure your connection.</p>
+
+        <h3>2. Natural Language Query</h3>
+        <p>Type your query or instruction into the top text box in plain English or any other language. Click <strong>Translate Prompt</strong> to preview the generated SQL statement.</p>
+        <p>Example queries: <em>"find all accounts with more than $5000"</em>, <em>"give Mike $100"</em>, <em>"allow Dary to browse client data"</em>, <em>"Show all users created last week"</em>.</p>
+        
+        <h3>3. SQL Query</h3>
+        <p>Review the SQL in the middle editor box. You can manually edit the statement or write custom queries from scratch. Click <strong>Execute SQL</strong> to run the command against your database.</p>
+
+        <h3>4. 'I feel lucky' Mode</h3>
+        <p>Clicking <strong>I feel> lucky</strong> will automatically translate your natural language prompt and execute the resulting SQL in one seamless step. Use this mode judiciously.</p>
+
+        <h3>5. Selecting AI Model</h3>
+        <p>By default, the application uses Gemini 3.6 Flash. You can change that in the configuration popup (<strong>gear icon</strong>).</p>
+        <p>The quota of the default Gemini API Key may be exchausted. In the case, use the configuratiom popup to select an alternative bundled key or enter your own. </p> 
+      </div>
+    </div>
   </div>
 
   <!-- Configuration Modal Dialog -->
