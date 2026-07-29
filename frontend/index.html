@@ -91,7 +91,7 @@
         <div class="header-actions">
           <!-- Help Icon Button -->
           <button id="helpBtn" class="help-btn" title="Help">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="29" height="29" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="10"></circle>
               <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
               <line x1="12" y1="17" x2="12.01" y2="17"></line>
@@ -100,7 +100,7 @@
 
           <!-- Gear Icon Button -->
           <button id="configBtn" class="gear-btn" title="Configuration">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="29" height="29" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="3"></circle>
               <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
             </svg>
@@ -110,124 +110,69 @@
 
       <!-- Section: Main Card Controls -->
       <section class="card editor-card">
-        <!-- Natural Language Section -->
-        <div class="form-group">
-          <div class="nl-prompt-row">
-            <div class="avatar-container">
-              <svg class="avatar-svg" viewBox="0 0 160 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="80" cy="55" r="32" fill="#3B2314"/>
-                <circle cx="98" cy="42" r="22" fill="#3B2314"/>
-                <path d="M35 200 L45 130 Q80 120 115 130 L125 200 Z" fill="#376846"/>
-                <path d="M58 135 L80 180 L102 135 L90 130 L80 155 L70 130 Z" fill="#F8FAFC"/>
-                <path d="M50 132 L75 190 L62 200 L38 200 Z" fill="#2D5438"/>
-                <path d="M110 132 L85 190 L98 200 L122 200 Z" fill="#2D5438"/>
-                <rect x="70" y="105" width="20" height="28" rx="6" fill="#E8B496"/>
-                <ellipse cx="80" cy="85" rx="26" ry="30" fill="#F3C3A6"/>
-                <circle cx="53" cy="88" r="6" fill="#E8B496"/>
-                <circle cx="107" cy="88" r="6" fill="#E8B496"/>
-                <path d="M54 75 C54 50, 106 50, 106 75 C96 60, 64 60, 54 75 Z" fill="#4A2E1B"/>
-                <path d="M52 70 Q65 52 80 68 Q95 52 108 70 Q105 48 80 48 Q55 48 52 70 Z" fill="#3B2314"/>
-                <ellipse cx="68" cy="82" rx="4" ry="5" fill="#22150C"/>
-                <ellipse cx="92" cy="82" rx="4" ry="5" fill="#22150C"/>
-                <circle cx="69" cy="80" r="1.5" fill="#FFFFFF"/>
-                <circle cx="93" cy="80" r="1.5" fill="#FFFFFF"/>
-                <path d="M62 73 Q68 70 74 73" stroke="#22150C" stroke-width="2" stroke-linecap="round"/>
-                <path d="M86 73 Q92 70 98 73" stroke="#22150C" stroke-width="2" stroke-linecap="round"/>
-                <path d="M78 87 Q80 90 82 87" stroke="#D49B7A" stroke-width="2" stroke-linecap="round"/>
-                <path d="M70 96 Q80 106 90 96" stroke="#9E4B37" stroke-width="2.5" stroke-linecap="round" fill="none"/>
-                <path d="M112 150 Q135 140 148 128 C152 124 158 132 152 136 Q138 152 118 165 Z" fill="#F3C3A6"/>
-              </svg>
+        <div class="controls-layout-grid">
+          
+          <!-- Column 1: Text Inputs -->
+          <div class="inputs-column">
+            <!-- Natural Language Row -->
+            <div class="input-row">
+              <div class="speech-bubble-wrapper">
+                <textarea id="aiPrompt" rows="2" placeholder="Type your question here..."></textarea>
+              </div>
             </div>
 
-            <div class="speech-bubble-wrapper">
-              <textarea id="aiPrompt" rows="4" placeholder="Type your question here..."></textarea>
-            </div>
-
-            <div class="nl-prompt-controls">
-              <button type="button" id="translateBtn" class="btn btn-primary btn-control-block">Translate Prompt</button>
-              <button type="button" id="luckyBtn" class="btn btn-secondary btn-control-block">I feel lucky</button>
-              <div id="translationStats" class="stats-card-vertical">
-                <div class="stat-item-inline">
-                  <span class="stat-label">Status:</span>
-                  <span id="transStatus" class="stat-val status-unknown">Ready</span>
-                </div>
-                <div class="stat-item-inline">
-                  <span class="stat-label">Time:</span>
-                  <span id="transTime" class="stat-val">—</span>
-                </div>
-                <div class="stat-item-inline">
-                  <span class="stat-label">Tokens:</span>
-                  <span id="tokensTotal" class="stat-val stat-highlight">—</span>
-                </div>
-
-                <div style="display: none;">
-                  <span id="tokensIn"></span>
-                  <span id="tokensOut"></span>
-                  <span id="tokensThink"></span>
-                  <span id="tokensCache"></span>
-                </div>
-              </div>
-            </div>            
-          </div>
-        </div>
-
-        <!-- SQL Command Section -->
-        <div>
-          <div class="form-group" style="margin-top: 0.5rem;">
-            <div class="sql-prompt-row">
-              <div class="avatar-container robot-avatar">
-                <svg class="avatar-svg" viewBox="0 0 160 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <line x1="80" y1="35" x2="80" y2="15" stroke="#94A3B8" stroke-width="4" stroke-linecap="round"/>
-                  <circle cx="80" cy="12" r="6" fill="#10B981"/>
-                  <circle cx="80" cy="12" r="3" fill="#34D399"/>
-                  <rect x="42" y="55" width="8" height="16" rx="3" fill="#64748B"/>
-                  <rect x="110" y="55" width="8" height="16" rx="3" fill="#64748B"/>
-                  <rect x="48" y="38" width="64" height="52" rx="14" fill="#334155" stroke="#475569" stroke-width="3"/>
-                  <rect x="56" y="46" width="48" height="36" rx="8" fill="#0F172A"/>
-                  <circle cx="68" cy="62" r="6" fill="#10B981"/>
-                  <circle cx="92" cy="62" r="6" fill="#10B981"/>
-                  <circle cx="70" cy="60" r="2" fill="#FFFFFF"/>
-                  <circle cx="94" cy="60" r="2" fill="#FFFFFF"/>
-                  <path d="M70 73 H90" stroke="#34D399" stroke-width="2.5" stroke-linecap="round"/>
-                  <rect x="72" y="90" width="16" height="10" fill="#64748B"/>
-                  <line x1="72" y1="95" x2="88" y2="95" stroke="#334155" stroke-width="2"/>
-                  <path d="M40 100 H120 L128 175 H32 L40 100 Z" fill="#334155" stroke="#475569" stroke-width="3"/>
-                  <rect x="55" y="112" width="50" height="42" rx="6" fill="#1E293B"/>
-                  <circle cx="68" cy="126" r="4" fill="#F87171"/>
-                  <circle cx="80" cy="126" r="4" fill="#FBBF24"/>
-                  <circle cx="92" cy="126" r="4" fill="#10B981"/>
-                  <rect x="65" y="138" width="30" height="6" rx="3" fill="#475569"/>
-                  <path d="M120 115 Q140 110 152 100 C156 96 160 104 154 108 Q138 125 122 135 Z" fill="#64748B"/>
-                  <circle cx="154" cy="102" r="5" fill="#10B981"/>
-                </svg>
-              </div>
-
-              <div class="sql-center-container">
-                <div class="speech-bubble-wrapper sql-bubble">
-                  <textarea id="sqlQuery" name="query" rows="3" placeholder="If you are fluent in SQL, feel free to bypass me and type it here and click 'Execute SQL'"></textarea>
-                </div>
-              </div>
-
-              <div class="sql-prompt-controls">
-                <button type="button" id="runBtn" class="btn btn-primary btn-control-block">Execute SQL</button>
-                <div class="stats-card-vertical">
-                  <div class="stat-item-inline">
-                    <span class="stat-label">Status:</span>
-                    <span id="execStatus" class="stat-val status-unknown">Ready</span>
-                  </div>
-                  <div class="stat-item-inline">
-                    <span class="stat-label">Time:</span>
-                    <span id="execTime" class="stat-val">—</span>
-                  </div>
-                  <div class="stat-item-inline">
-                    <span class="stat-label">Rows:</span>
-                    <span id="execRows" class="stat-val">—</span>
-                  </div>
-                </div>
-                <button type="button" id="clearHistoryBtn" class="btn btn-secondary btn-control-block">Clear Chat History</button>
+            <!-- SQL Command Row -->
+            <div class="input-row">
+              <div class="speech-bubble-wrapper sql-bubble">
+                <textarea id="sqlQuery" name="query" rows="3" placeholder="If you are fluent in SQL, feel free to bypass me and type it here and click 'Execute SQL'"></textarea>
               </div>
             </div>
           </div>
+
+          <!-- Column 2: Action Buttons Stacked (Translate, I feel lucky, Execute SQL) -->
+          <div class="action-buttons-column">
+            <button type="button" id="translateBtn" class="btn btn-primary btn-control-block">Translate Prompt</button>
+            <button type="button" id="luckyBtn" class="btn btn-primary btn-control-block">I feel lucky</button>
+            <button type="button" id="runBtn" class="btn btn-primary btn-control-block">Execute SQL</button>
+          </div>
+
+          <!-- Column 3: Stats Stacked (Translation on top, SQL execution on bottom) -->
+          <div class="stats-column">
+            <!-- Translate Stats (Top) -->
+            <div id="translationStats" class="stats-card-vertical">
+              <div class="stat-card-title">Translation Stats</div>
+              <div class="stat-item-inline">
+                <span class="stat-label">Status:</span>
+                <span id="transStatus" class="stat-val status-unknown">Ready</span>
+              </div>
+              <div class="stat-item-inline">
+                <span class="stat-label">Time:</span>
+                <span id="transTime" class="stat-val">—</span>
+              </div>
+              <div class="stat-item-inline">
+                <span class="stat-label">Tokens:</span>
+                <span id="tokensTotal" class="stat-val stat-highlight">—</span>
+              </div>
+            </div>
+
+            <!-- SQL Execution Stats (Bottom) -->
+            <div id="executionStats" class="stats-card-vertical">
+              <div class="stat-card-title">SQL Execution Stats</div>
+              <div class="stat-item-inline">
+                <span class="stat-label">Status:</span>
+                <span id="execStatus" class="stat-val status-unknown">Ready</span>
+              </div>
+              <div class="stat-item-inline">
+                <span class="stat-label">Time:</span>
+                <span id="execTime" class="stat-val">—</span>
+              </div>
+              <div class="stat-item-inline">
+                <span class="stat-label">Rows:</span>
+                <span id="execRows" class="stat-val">—</span>
+              </div>
+            </div>
+          </div>
+
         </div>
       </section>
 
@@ -276,7 +221,7 @@
         <p>Welcome to <strong>CRBot</strong>! Here is a quick guide on how to interact with it.</p>
         
         <h3>1. General</h3>
-        <p>By default, you are connected to a small sample database called <strong>KitchenBank</strong> as a user called <strong>BankClerk</strong> that you may use as playground.</p>
+        <p>By default, you are connected to a sample database called <strong>KitchenBank</strong> as a user called <strong>BankClerk</strong> that you may use as playground.</p>
         <p>If you prefer to use your own database, click the <strong>gear icon</strong> on the upper right corner to configure your connection.</p>
 
         <h3>2. Natural Language Query</h3>
@@ -287,11 +232,14 @@
         <p>Review the SQL in the middle editor box. You can manually edit the statement or write custom queries from scratch. Click <strong>Execute SQL</strong> to run the command against your database.</p>
 
         <h3>4. 'I feel lucky' Mode</h3>
-        <p>Clicking <strong>I feel> lucky</strong> will automatically translate your natural language prompt and execute the resulting SQL in one seamless step. Use this mode judiciously.</p>
+        <p>Clicking <strong>I feel lucky</strong> will automatically translate your natural language prompt and execute the resulting SQL in one seamless step. Use this mode judiciously.</p>
 
         <h3>5. Selecting AI Model</h3>
         <p>By default, the application uses Gemini 3.6 Flash. You can change that in the configuration popup (<strong>gear icon</strong>).</p>
-        <p>The quota of the default Gemini API Key may be exchausted. In the case, use the configuratiom popup to select an alternative bundled key or enter your own. </p> 
+        <p>The quota of the default Gemini API Key may be exhausted. In that case, use the configuration popup to select an alternative bundled key or enter your own.</p> 
+
+        <h3>6. Multi-turn conversations</h3>
+        <p>CRBot remembers the last 10 queries/prompts and takes them int account before responding. If you want to reset chat histroy open the Configuration popup and click the related button</p>
       </div>
     </div>
   </div>
@@ -349,13 +297,19 @@
           <input type="password" id="modalCustomApiKey" class="config-input hidden" style="margin-top: 0.5rem;" placeholder="Enter your own API Key" autocomplete="off">
         </div>
 
-        <div class="modal-actions" style="display: flex; gap: 0.5rem; justify-content: flex-end;">
-          <button type="button" id="configResetBtn" class="btn" style="background-color: #3f444d; color: #f5f6f8;">Reset Defaults</button>
+        <!-- Modal Action Buttons Alignment -->
+        <div class="modal-actions" style="display: flex; gap: 0.5rem; justify-content: flex-end; align-items: flex-start;">
+          <!-- Container for Clear Chat History & Subtitle Status -->
+          <div style="display: flex; flex-direction: column; align-items: center;">
+            <button type="button" id="clearHistoryBtn" class="btn btn-clear-history">Clear Chat History</button>
+            <div id="clearHistoryMsg" class="history-turns-subtitle">0 turns in history</div>
+          </div>
+          <button type="button" id="configResetBtn" class="btn btn-modal-secondary">Reset Defaults</button>
           <button type="button" id="configSaveBtn" class="btn btn-primary">Save Changes</button>
         </div>
       </form>
     </div>
-  </div>  
+  </div>
   
   <!-- Client Scripts -->
   <!-- 1. SQL Formatting Library -->

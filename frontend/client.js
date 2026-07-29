@@ -69,6 +69,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  function updateHistoryTurnsSubtitle() {
+    const clearMsgEl = document.getElementById('clearHistoryMsg');
+    if (!clearMsgEl) return;
+
+    // Standard multi-turn exchange consists of 2 entries (user + model)
+    const turns = Math.floor(chatHistory.length / 2);
+    clearMsgEl.textContent = `${turns} turn${turns === 1 ? '' : 's'} in history (max 5)`;
+    clearMsgEl.style.color = 'var(--text-muted, #94a3b8)';
+  }
+
   async function fetchBackendConfig() {
     try {
       const response = await fetch('/api/config');
@@ -175,7 +185,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   function loadConfigIntoUI() {
     const config = loadConfig();
 
-    // 1. Model Radio Selection (Defaults to gemini-3.6-flash or the last radio option)
+    // 1. Model Radio Selection
     const modelRadios = document.querySelectorAll('input[name="gemini_model"]');
     modelRadios.forEach(r => r.checked = false);
 
@@ -213,6 +223,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       apiKeyRadios[0].checked = true;
       if (modalCustomApiKey) modalCustomApiKey.classList.add('hidden');
     }
+
+    // Synchronize subtitle turn count in modal
+    updateHistoryTurnsSubtitle();
   }
 
   async function updateConnectionDetails() {
@@ -240,7 +253,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const selectedModel = document.querySelector('input[name="gemini_model"]:checked')?.value || DEFAULT_MODEL;
     const selectedApiKeyChoice = document.querySelector('input[name="api_key_choice"]:checked')?.value;
     const modalCustomApiKey = document.getElementById('modalCustomApiKey');
-    
+
     let apiKey = DEFAULT_API_KEY;
     if (selectedApiKeyChoice === 'custom' && modalCustomApiKey) {
       apiKey = modalCustomApiKey.value.trim();
@@ -315,15 +328,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   // --- Reset Defaults Handler ---
   if (configResetBtn) {
     configResetBtn.addEventListener('click', async () => {
-      // Clear storage
       localStorage.removeItem('crbot_model');
       localStorage.removeItem('crbot_api_key');
       localStorage.removeItem('crbot_db_url');
 
-      // Sync UI inputs back to system defaults
       loadConfigIntoUI();
-
-      // Save reset defaults into storage without dismissing modal
       await triggerConfigSave({ closeModal: false });
     });
   }
@@ -356,9 +365,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           const val = row[col];
           td.textContent = val !== null && val !== undefined ? val : 'NULL';
           
-          // Add multiline formatting class so CSS white-space: pre-wrap takes effect
           td.classList.add('cell-multiline');
-    
           if (val === null || val === undefined) td.classList.add('text-null');
           tr.appendChild(td);
         });
@@ -444,10 +451,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (transTime) transTime.textContent = `${data.duration} ms`;
         if (tokensTotal) tokensTotal.textContent = data.total_tokens || "—";
       } else {
-        // 1. Empty SQL box
         setSqlQuery('');
 
-        // 2. Translation Stats: "Error" + Dashes
         if (transStatus) {
           transStatus.textContent = "Error";
           transStatus.className = "stat-val status-error";
@@ -455,7 +460,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (transTime) transTime.textContent = "—";
         if (tokensTotal) tokensTotal.textContent = "—";
 
-        // 3. Execution Stats: "Ready" + Dashes
         if (execStatus) {
           execStatus.textContent = "Ready";
           execStatus.className = "stat-val";
@@ -465,7 +469,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         console.error("Translation Error:", data.error || "Unknown error");
 
-        // Display translation error in the results body & hide tabs
         if (resultsTabsNav) resultsTabsNav.classList.add('hidden');
         if (resultsHeader) resultsHeader.innerHTML = '';
         if (resultsBody) {
@@ -484,10 +487,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       }
     } catch (err) {
-      // 1. Empty SQL box
       setSqlQuery('');
 
-      // 2. Translation Stats: "Error" + Dashes
       if (transStatus) {
         transStatus.textContent = "Error";
         transStatus.className = "stat-val status-error";
@@ -495,7 +496,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (transTime) transTime.textContent = "—";
       if (tokensTotal) tokensTotal.textContent = "—";
 
-      // 3. Execution Stats: "Ready" + Dashes
       if (execStatus) {
         execStatus.textContent = "Ready";
         execStatus.className = "stat-val";
@@ -505,7 +505,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       console.error("Failed to translate prompt:", err);
 
-      // Display fetch/network translation error in the results body & hide tabs
       if (resultsTabsNav) resultsTabsNav.classList.add('hidden');
       if (resultsHeader) resultsHeader.innerHTML = '';
       if (resultsBody) {
@@ -563,6 +562,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             role: 'model',
             text: sql
           });
+          // Keep only the last 10 messages (5 turns)
+          chatHistory = chatHistory.slice(-10);
+          updateHistoryTurnsSubtitle();
         }
 
         renderMultiTurnResults(data.results);
@@ -599,10 +601,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (aiPrompt) {
     aiPrompt.addEventListener('input', () => {
-      // 1. Empty SQL box
       setSqlQuery('');
 
-      // 2. Translation Stats: "Ready" + Dashes
       if (transStatus) {
         transStatus.textContent = "Ready";
         transStatus.className = "stat-val";
@@ -610,7 +610,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (transTime) transTime.textContent = "—";
       if (tokensTotal) tokensTotal.textContent = "—";
 
-      // 3. Execution Stats: "Ready" + Dashes
       if (execStatus) {
         execStatus.textContent = "Ready";
         execStatus.className = "stat-val";
@@ -632,20 +631,29 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (clearHistoryBtn) {
     clearHistoryBtn.addEventListener('click', () => {
-      chatHistory = [];
-      setSqlQuery('');
-      if (aiPrompt) aiPrompt.value = '';
-      if (transStatus) transStatus.textContent = "Ready";
-      if (execStatus) execStatus.textContent = "Ready";
-      if (resultsHeader) resultsHeader.innerHTML = '';
-      if (resultsBody) resultsBody.innerHTML = '<tr><td class="text-center text-muted py-8">The answer will be displayed here.</td></tr>';
-      if (resultsTabsNav) resultsTabsNav.classList.add('hidden');
+      try {
+        chatHistory = [];
+        setSqlQuery('');
+        if (aiPrompt) aiPrompt.value = '';
+        if (transStatus) transStatus.textContent = "Ready";
+        if (execStatus) execStatus.textContent = "Ready";
+        if (resultsHeader) resultsHeader.innerHTML = '';
+        if (resultsBody) resultsBody.innerHTML = '<tr><td class="text-center text-muted py-8">The answer will be displayed here.</td></tr>';
+        if (resultsTabsNav) resultsTabsNav.classList.add('hidden');
+
+        updateHistoryTurnsSubtitle();
+      } catch (err) {
+        console.error("Failed to clear chat history:", err);
+        const clearMsgEl = document.getElementById('clearHistoryMsg');
+        if (clearMsgEl) {
+          clearMsgEl.textContent = 'Failed to clear chat history';
+          clearMsgEl.style.color = 'var(--danger, #f87171)';
+        }
+      }
     });
   }
 
   await fetchBackendConfig();
 
-  // Focus the NL prompt box automatically after load
   if (aiPrompt) aiPrompt.focus();
-  
 });

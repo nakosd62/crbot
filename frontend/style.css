@@ -137,7 +137,7 @@ select:focus {
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--bg-card-border);
   border-radius: 12px;
-  padding: 1.25rem;
+  padding: 0.5rem 1.25rem;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
   display: flex;
   flex-direction: column;
@@ -151,7 +151,7 @@ select:focus {
 /* Fixed-Height Results Section */
 .table-card {
   padding: 0.75rem;
-  max-height: 280px;
+  max-height: 400px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -405,19 +405,20 @@ textarea:focus {
   gap: 0.5rem;
 }
 
+/* Reduced size by an additional 20%: width/height set to 50px */
 .gear-btn, .help-btn {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--bg-card-border);
   color: var(--text-primary);
-  padding: 0.6rem;
+  padding: 0.35rem;
   border-radius: 50%;
   cursor: pointer;
   transition: var(--transition);
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 42px;
-  height: 42px;
+  width: 50px;
+  height: 50px;
 }
 
 .gear-btn:hover {
@@ -447,27 +448,13 @@ textarea:focus {
   width: 100%;
 }
 
-.avatar-container {
-  width: 110px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-}
-
-.avatar-svg {
-  width: 100%;
-  height: 100%;
-  filter: drop-shadow(0px 4px 10px rgba(0, 0, 0, 0.35));
-}
-
 /* Rounded Speech/Prompt Containers */
 .speech-bubble-wrapper {
   position: relative;
   flex: 1;
   background: #0f172a;
   border: 3px solid #334155;
-  border-radius: 0;  /*16px*/
+  border-radius: 0;
   transform: none;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), inset 0 0 12px rgba(16, 185, 129, 0.08);
   padding: 6px;
@@ -477,31 +464,35 @@ textarea:focus {
 .speech-bubble-wrapper.sql-bubble {
   background: #0f172a;
   border: 3px solid #334155;
-  border-radius: 0; /*16px*/
+  border-radius: 0;
   transform: none;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), inset 0 0 12px rgba(16, 185, 129, 0.08);
 
-  height: 130px !important; /* Fixed initial height */
-  min-height: 130px;
+  height: 120px !important;
+  min-height: 120px;
   max-height: 600px !important;
-  overflow: hidden !important; /* Prevents container from growing with content */
-  resize: vertical; /* Allows manual user dragging only */
+  overflow: hidden !important;
+  resize: vertical;
   display: flex;
   flex-direction: column;
-  position: relative; /* Lock absolute context for CodeMirror */
+  position: relative;
 }
 
 .nl-prompt-row .speech-bubble-wrapper,
-.nl-prompt-row .avatar-container,
 .nl-prompt-row .nl-prompt-controls,
-.sql-prompt-row .avatar-container.robot-avatar,
 .sql-prompt-row .sql-prompt-controls {
-  height: 90px;
+  height: 60px;
+  min-height: 60px;
 }
 
-/* SQL Row specific wrapper overrides (REMOVED height: auto) */
+.inputs-column .input-row:first-child {
+  min-height: 70px;
+  height: 70px;
+}
+
+/* SQL Row specific wrapper overrides */
 .sql-prompt-row .speech-bubble-wrapper.sql-bubble {
-  min-height: 130px;
+  min-height: 120px;
   max-height: 600px;
   resize: vertical;
   overflow: hidden;
@@ -516,16 +507,15 @@ textarea:focus {
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
-  color: #ffffff !important; /* White for contrast */
-  /*color: #34d399 !important; Green glowing SQL text color */
-  font-family: var(--font-mono) !important; /* Monospace font */
-  font-size: 0.9rem;
-  line-height: 1.45;
-  padding: 0.5rem 0.8rem;
+  color: #ffffff !important;
+  font-family: var(--font-mono) !important;
+  font-size: 0.85rem;
+  line-height: 1.3;
+  padding: 0.4rem 0.6rem;
   resize: none; 
   outline: none;
   transform: none;
-  border-radius: 0; /*12px*/
+  border-radius: 0;
   box-sizing: border-box;
 }
 
@@ -550,7 +540,7 @@ textarea:focus {
   resize: none;
   outline: none;
   transform: none;
-  border-radius: 0; /*12px*/
+  border-radius: 0;
   box-sizing: border-box;
 }
 
@@ -562,7 +552,7 @@ textarea:focus {
   min-height: 100%; 
   resize: none !important;
   background: transparent !important;
-  border-radius: 0; /*10px*/
+  border-radius: 0;
   flex: 1 1 auto;
   position: absolute !important;
   top: 0;
@@ -576,7 +566,7 @@ textarea:focus {
   max-height: 100% !important;
   min-height: 0 !important;
   flex: 1 1 auto !important;
-  overflow-y: auto !important; /* Internal vertical scrollbar when SQL overflows */
+  overflow-y: auto !important;
   overflow-x: auto !important;
 }
 
@@ -660,9 +650,9 @@ textarea:focus {
   border-radius: 12px;
   width: 100%;
   max-width: 680px;
-  max-height: 85vh; /* Prevents the modal from exceeding viewport height */
-  display: flex; /* Enables flex container layout */
-  flex-direction: column; /* Stacks header and body vertically */
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
   overflow: hidden;
 }
@@ -704,9 +694,9 @@ textarea:focus {
 .help-dialog-body {
   line-height: 1.6;
   color: var(--text-secondary);
-  overflow-y: auto; /* Adds a vertical scrollbar when content exceeds height */
-  max-height: 500px; /* Gives the body a reasonable fixed maximum height */
-  flex: 1; /* Allows the body to scale properly inside the modal card */
+  overflow-y: auto;
+  max-height: 500px;
+  flex: 1;
 }
 
 .help-dialog-body h3 {
@@ -831,7 +821,7 @@ textarea:focus {
 .results-container {
   display: flex;
   flex-direction: column;
-  height: 500px;
+  height: 650px;
   background-color: #0f172a;
   border-radius: 8px;
   overflow: hidden;
@@ -1008,4 +998,131 @@ textarea:focus {
   word-break: break-word;
   line-height: 1.5;
   font-family: var(--font-mono, monospace);
+}
+
+/* Layout Grid for Compact Vertical Controls */
+.controls-layout-grid {
+  display: flex;
+  gap: 1rem;
+  align-items: stretch;
+  width: 100%;
+}
+
+.inputs-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: calc(100% - 96px);
+}
+
+.input-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 75px;
+}
+
+.input-row .speech-bubble-wrapper {
+  height: 100%;
+  flex: 1;
+}
+
+/* Action Buttons Column */
+.action-buttons-column {
+  width: 125px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  align-self: stretch;
+  padding: 0;
+}
+
+.action-buttons-column .btn {
+  flex: none;
+  height: 30px;
+  padding: 0 0.5rem;
+  font-size: 0.72rem;
+  line-height: 1.1;
+}
+
+/* Stats Column */
+.stats-column {
+  width: 160px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  justify-content: space-between;
+}
+
+.stats-column #translationStats {
+  margin-bottom: 0.6rem;
+}
+
+.stats-column #executionStats {
+  margin-top: 0.6rem;
+}
+
+.stats-card-vertical {
+  background: rgba(5, 8, 16, 0.5);
+  border: 1px solid var(--bg-card-border);
+  border-radius: 8px;
+  padding: 0.32rem 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.65rem;
+  flex: 1;
+  justify-content: center;
+}
+
+.stat-card-title {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.15rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 0.15rem;
+}
+
+/* Button height consistency in modals */
+.modal-actions .btn-primary,
+.btn-clear-history,
+.btn-modal-secondary {
+  height: 34px;
+  padding: 0.4rem 1.25rem;
+  font-size: 0.70rem;
+  font-weight: 600;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-clear-history,
+.btn-modal-secondary {
+  background-color: #3f444d;
+  color: #f5f6f8;
+}
+
+.btn-clear-history:hover,
+.btn-modal-secondary:hover {
+  background-color: #4b525d;
+}
+
+/* Permanent status subtitle under clear history button */
+.history-turns-subtitle {
+  font-size: 0.68rem;
+  margin-top: 0.35rem;
+  min-height: 1.1em;
+  font-weight: 500;
+  color: var(--text-muted, #94a3b8);
+  text-align: center;
+  white-space: nowrap;
 }
