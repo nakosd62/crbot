@@ -10,5 +10,5 @@ echo "FRONTEND TESTING"
 echo "----------------"
 ./launch_app.sh
 sleep 5
-./venv/bin/python -m pytest tests/e2e/ --headed
+./venv/bin/python -m pytest tests/e2e/ $1  ##(use --headed if needed)
 ./kill_app.sh
