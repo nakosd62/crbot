@@ -5,12 +5,18 @@
 # Ignore local virtual environment
 venv/
 
-# Ignore bash scripts containing secrets
+# Ignore env setting
+.env
+.env-sample
+
+# Ignore utility scripts
 launch_app.sh
 kill_app.sh
 gcp_deploy.sh
-.env
-.env-sample
+
+# Ignore testing files
+run_tests.sh
+tests/
 
 # Ignore README
 README.md

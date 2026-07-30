@@ -59,5 +59,5 @@ else
 fi
 
 # Monitor output log
-echo "Monitoring standard output / error..."
-tail -f app.log
+echo "Tail app.log for standrd output / error."
+# tail -f app.log
