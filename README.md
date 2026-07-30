@@ -71,5 +71,5 @@ Open your browser and navigate to: [http://localhost:3000](http://localhost:3000
 
 ## Directory Layout
 * `app.py`: Flask backend exposing `/api/translate`, `/api/execute`, and `/api/config`.
-* `frontend/`: Static frontend files (`index.html`, `client.js`, `style.css`).
+*  Frontend files: `index.html`, `client.js`, `style.css`.
 * `launch_app.sh` & `kill_app.sh`: Automated management scripts.
