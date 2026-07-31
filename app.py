@@ -3,6 +3,7 @@ import time
 from flask import Flask, request, jsonify, send_from_directory
 import psycopg2
 import sqlparse
+import sqlite3
 from flask_cors import CORS
 from google import genai
 from google.genai import types
@@ -15,6 +16,31 @@ DEFAULT_CONN = os.environ.get(
     "postgresql://postgres:password@host:23456/defaultdb?sslmode=verify-full"
 )
 
+TRANSLATION_STATS_DB_PATH = os.environ.get("TRANSLATION_STATS_DB_PATH", "translation_stats.db")
+
+def init_translation_stats_db():
+    try:
+        with sqlite3.connect(TRANSLATION_STATS_DB_PATH) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS translations (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    connect_string TEXT,
+                    nl_prompt TEXT,
+                    sql_command TEXT,
+                    model TEXT,
+                    duration INTEGER,
+                    input_tokens INTEGER,
+                    output_tokens INTEGER,
+                    total_tokens INTEGER,
+                    thinking_tokens INTEGER,
+                    cached_content_tokens INTEGER,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+            conn.commit()
+    except Exception as e:
+        print(f"Error initializing SQLite stats DB: {e}")
 
 def resolve_conn_str(conn_str):
     if not conn_str:
@@ -64,32 +90,25 @@ def get_database_schema(conn_str=None):
         if conn:
             conn.close()
 
+
 def record_translation(conn_str, nl_prompt, sql_command, gemini_model, duration, input_tokens, output_tokens, total_tokens, thinking_tokens, cached_content_tokens):
-    conn = None
-    statsdb_conn_str = os.environ.get(
-        "STATSDB_CONN_STRING",
-        "postgresql://postgres:password@host:23456/defaultdb?sslmode=verify-full"
-    )   
     try:
-        conn = get_db_connection(statsdb_conn_str)
-        conn.autocommit = True
-        with conn.cursor() as cursor:
+        with sqlite3.connect(TRANSLATION_STATS_DB_PATH) as conn:
+            cursor = conn.cursor()
             cursor.execute("""
-                INSERT INTO translations(
+                INSERT INTO translations (
                     connect_string, nl_prompt, sql_command, model, duration, 
                     input_tokens, output_tokens, total_tokens, 
                     thinking_tokens, cached_content_tokens
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 conn_str, nl_prompt, sql_command, gemini_model, duration, 
                 input_tokens, output_tokens, total_tokens, 
                 thinking_tokens, cached_content_tokens
             ))
+            conn.commit()
     except Exception as e:
         print(f"Error recording translation: {e}")
-    finally:
-        if conn:
-            conn.close()
 
 @app.route('/')
 def index():
@@ -323,7 +342,48 @@ def execute_query():
         if conn:
             conn.close()
 
+
+@app.route('/api/history', methods=['GET'])
+def get_translation_history():
+    try:
+        with sqlite3.connect(TRANSLATION_STATS_DB_PATH) as conn:
+            conn.row_factory = sqlite3.Row  # Enables column-name access
+            cursor = conn.cursor()
+
+            # Fetch table history records
+            cursor.execute("""
+                SELECT nl_prompt, sql_command, created_at
+                FROM translations
+                ORDER BY created_at DESC
+                LIMIT 20
+            """)
+            rows = [dict(row) for row in cursor.fetchall()]
+
+            # Fetch daily stats grouped by date
+            cursor.execute("""
+                SELECT 
+                    DATE(created_at) as day_date,
+                    COUNT(*) as total_translations,
+                    SUM(total_tokens) as sum_total_tokens,
+                    SUM(input_tokens) as sum_input_tokens
+                FROM translations
+                GROUP BY DATE(created_at)
+                ORDER BY DATE(created_at) ASC
+            """)
+            stats = [dict(row) for row in cursor.fetchall()]
+
+            return jsonify({
+                'success': True, 
+                'history': rows,
+                'stats': stats
+            })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     hostname = os.environ.get("CRBOT_HOSTNAME", "0.0.0.0")
     port = int(os.environ.get("CRBOT_PORT", 3000))
+    init_translation_stats_db()
     app.run(host=hostname, port=port, debug=False, use_reloader=False)

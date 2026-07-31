@@ -17,6 +17,10 @@
 
   <!-- Stylesheet -->
   <link rel="stylesheet" href="style.css">
+
+  <!-- Add Chart.js to <head> -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 </head>
 <body>
   <div class="background-decor animate-pulse"></div>
@@ -95,6 +99,14 @@
               <circle cx="12" cy="12" r="10"></circle>
               <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
               <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+          </button>
+
+          <!-- History Icon Button -->
+          <button id="historyBtn" class="history-btn" title="Translation History">
+            <svg width="29" height="29" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
             </svg>
           </button>
 
@@ -243,6 +255,73 @@
       </div>
     </div>
   </div>
+
+  <!-- History Modal Dialog -->
+  <div id="historyModal" class="modal-overlay hidden">
+    <div class="modal-card modal-card-large">
+      <div class="modal-header">
+        <h2 class="modal-title">📜 History & Analytics</h2>
+        <button id="historyModalCloseBtn" class="modal-close-btn" type="button">&times;</button>
+      </div>
+      
+      <!-- Chrome-Style Navigation Tabs -->
+      <div id="historyTabsNav" class="results-tabs-nav">
+        <button type="button" id="tabBtnTranslations" class="result-tab-btn active">
+          <span class="result-tab-title">Translations</span>
+          <span class="result-tab-flare-right"></span>
+        </button>
+        <button type="button" id="tabBtnStatistics" class="result-tab-btn">
+          <span class="result-tab-title">Statistics</span>
+          <span class="result-tab-flare-right"></span>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Tab 1: Translations Table -->
+        <div id="historyTabTranslations" class="history-tab-content">
+          <div class="results-container history-results-container">
+            <div class="results-table-wrapper">
+              <table>
+                <thead>
+                  <tr id="historyTableHeader"></tr>
+                </thead>
+                <tbody id="historyTableBody">
+                  <tr>
+                    <td class="text-center text-muted py-8">Loading history...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Statistics Charts -->
+        <div id="historyTabStatistics" class="history-tab-content hidden">
+          <div class="stats-charts-vertical-container">
+            <div class="chart-card vertical-chart-card">
+              <h3>Total Translations per Day</h3>
+              <div class="chart-wrapper">
+                <canvas id="chartTranslationsPerDay"></canvas>
+              </div>
+            </div>
+            <div class="chart-card vertical-chart-card">
+              <h3>Sum of Total Tokens per Day</h3>
+              <div class="chart-wrapper">
+                <canvas id="chartTotalTokensPerDay"></canvas>
+              </div>
+            </div>
+            <div class="chart-card vertical-chart-card">
+              <h3>Sum of Input Tokens per Day</h3>
+              <div class="chart-wrapper">
+                <canvas id="chartInputTokensPerDay"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 
   <!-- Configuration Modal Dialog -->
   <div id="configModal" class="modal-overlay hidden">

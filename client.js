@@ -36,10 +36,27 @@ document.addEventListener('DOMContentLoaded', async () => {
   const helpBtn = document.getElementById('helpBtn');
   const helpModalCloseBtn = document.getElementById('helpModalCloseBtn');
 
+  // DOM Elements - History Modal & Tabs
+  const historyModal = document.getElementById('historyModal');
+  const historyBtn = document.getElementById('historyBtn');
+  const historyModalCloseBtn = document.getElementById('historyModalCloseBtn');
+  const historyTableHeader = document.getElementById('historyTableHeader');
+  const historyTableBody = document.getElementById('historyTableBody');
+
+  const tabBtnTranslations = document.getElementById('tabBtnTranslations');
+  const tabBtnStatistics = document.getElementById('tabBtnStatistics');
+  const historyTabTranslations = document.getElementById('historyTabTranslations');
+  const historyTabStatistics = document.getElementById('historyTabStatistics');
+
   // DOM Elements - Results Table & Tabs
   const resultsTabsNav = document.getElementById('resultsTabsNav');
   const resultsHeader = document.getElementById('resultsHeader');
   const resultsBody = document.getElementById('resultsBody');
+
+  // Chart.js Instances
+  let chartCountInstance = null;
+  let chartTotalTokensInstance = null;
+  let chartInputTokensInstance = null;
 
   // CodeMirror Setup
   let sqlEditor = null;
@@ -73,7 +90,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const clearMsgEl = document.getElementById('clearHistoryMsg');
     if (!clearMsgEl) return;
 
-    // Standard multi-turn exchange consists of 2 entries (user + model)
     const turns = Math.floor(chatHistory.length / 2);
     clearMsgEl.textContent = `${turns} turn${turns === 1 ? '' : 's'} in history (max 5)`;
     clearMsgEl.style.color = 'var(--text-muted, #94a3b8)';
@@ -91,7 +107,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       initializeApiKeyUI();
 
-      // Save defaults to localStorage if missing
       if (!localStorage.getItem('crbot_model')) {
         localStorage.setItem('crbot_model', DEFAULT_MODEL);
       }
@@ -103,8 +118,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
 
       loadConfigIntoUI();
-
-      // Trigger the standard save workflow on load to initialize state
       await triggerConfigSave({ closeModal: false });
     } catch (err) {
       console.error("Failed to fetch backend configuration:", err);
@@ -185,7 +198,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   function loadConfigIntoUI() {
     const config = loadConfig();
 
-    // 1. Model Radio Selection
     const modelRadios = document.querySelectorAll('input[name="gemini_model"]');
     modelRadios.forEach(r => r.checked = false);
 
@@ -196,13 +208,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       modelRadios[modelRadios.length - 1].checked = true;
     }
 
-    // 2. Set DB URL input
     const modalDbUrl = document.getElementById('modalDbUrl');
     if (modalDbUrl) {
       modalDbUrl.value = maskConnectionDbUrl(config.dbUrl);
     }
 
-    // 3. API Key Selection
     const apiKeyRadios = document.querySelectorAll('input[name="api_key_choice"]');
     apiKeyRadios.forEach(r => r.checked = false);
 
@@ -224,7 +234,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (modalCustomApiKey) modalCustomApiKey.classList.add('hidden');
     }
 
-    // Synchronize subtitle turn count in modal
     updateHistoryTurnsSubtitle();
   }
 
@@ -248,7 +257,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // --- Reusable Save Helper ---
   async function triggerConfigSave(options = { closeModal: true }) {
     const selectedModel = document.querySelector('input[name="gemini_model"]:checked')?.value || DEFAULT_MODEL;
     const selectedApiKeyChoice = document.querySelector('input[name="api_key_choice"]:checked')?.value;
@@ -265,19 +273,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const currentConfig = loadConfig();
     const unmaskedDbUrl = unmaskConnectionDbUrl(modalDbUrlInput, currentConfig.dbUrl);
 
-    // Save state
     saveConfig(selectedModel, apiKey, unmaskedDbUrl);
 
-    // Conditionally hide modal
     if (options.closeModal && configModal) {
       configModal.classList.add('hidden');
     }
 
-    // Refresh connection status / header title
     await updateConnectionDetails();
   }
-
-  // --- Configuration Modal Listeners ---
 
   if (configBtn && configModal) {
     configBtn.addEventListener('click', () => {
@@ -292,8 +295,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // --- Help Modal Listeners ---
-
   if (helpBtn && helpModal) {
     helpBtn.addEventListener('click', () => {
       helpModal.classList.remove('hidden');
@@ -303,6 +304,175 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (helpModalCloseBtn && helpModal) {
     helpModalCloseBtn.addEventListener('click', () => {
       helpModal.classList.add('hidden');
+    });
+  }
+
+  if (tabBtnTranslations && tabBtnStatistics) {
+    tabBtnTranslations.addEventListener('click', () => {
+      tabBtnTranslations.classList.add('active');
+      tabBtnStatistics.classList.remove('active');
+      if (historyTabTranslations) historyTabTranslations.classList.remove('hidden');
+      if (historyTabStatistics) historyTabStatistics.classList.add('hidden');
+    });
+
+    tabBtnStatistics.addEventListener('click', () => {
+      tabBtnStatistics.classList.add('active');
+      tabBtnTranslations.classList.remove('active');
+      if (historyTabStatistics) historyTabStatistics.classList.remove('hidden');
+      if (historyTabTranslations) historyTabTranslations.classList.add('hidden');
+    });
+  }
+
+  function renderStatisticsCharts(statsData) {
+    if (!statsData || statsData.length === 0 || typeof window.Chart === 'undefined') return;
+
+    const dates = statsData.map(item => item.day_date || item.date || 'Unknown');
+    const totalTranslations = statsData.map(item => item.total_translations || 0);
+    const sumTotalTokens = statsData.map(item => item.sum_total_tokens || 0);
+    const sumInputTokens = statsData.map(item => item.sum_input_tokens || 0);
+
+    const commonOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { 
+        legend: { 
+          display: false // Hides the legend for all charts
+        } 
+      },
+      scales: {
+        x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+        y: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } }
+      }
+    };
+
+    // Chart 1: Total Translations per Day
+    const ctxCount = document.getElementById('chartTranslationsPerDay')?.getContext('2d');
+    if (ctxCount) {
+      if (chartCountInstance) chartCountInstance.destroy();
+      chartCountInstance = new window.Chart(ctxCount, {
+        type: 'bar',
+        data: {
+          labels: dates,
+          datasets: [{
+            label: 'Total Translations',
+            data: totalTranslations,
+            backgroundColor: 'rgba(56, 189, 248, 0.6)',
+            borderColor: '#38bdf8',
+            borderWidth: 1
+          }]
+        },
+        options: commonOptions
+      });
+    }
+
+    // Chart 2: Total Tokens per Day
+    const ctxTotalTokens = document.getElementById('chartTotalTokensPerDay')?.getContext('2d');
+    if (ctxTotalTokens) {
+      if (chartTotalTokensInstance) chartTotalTokensInstance.destroy();
+      chartTotalTokensInstance = new window.Chart(ctxTotalTokens, {
+        type: 'bar',
+        data: {
+          labels: dates,
+          datasets: [{
+            label: 'Sum of Total Tokens',
+            data: sumTotalTokens,
+            backgroundColor: 'rgba(16, 185, 129, 0.6)',
+            borderColor: '#10b981',
+            borderWidth: 1
+          }]
+        },
+        options: commonOptions
+      });
+    }
+
+    // Chart 3: Input Tokens per Day
+    const ctxInputTokens = document.getElementById('chartInputTokensPerDay')?.getContext('2d');
+    if (ctxInputTokens) {
+      if (chartInputTokensInstance) chartInputTokensInstance.destroy();
+      chartInputTokensInstance = new window.Chart(ctxInputTokens, {
+        type: 'bar',
+        data: {
+          labels: dates,
+          datasets: [{
+            label: 'Sum of Input Tokens',
+            data: sumInputTokens,
+            backgroundColor: 'rgba(168, 85, 247, 0.6)',
+            borderColor: '#a855f7',
+            borderWidth: 1
+          }]
+        },
+        options: commonOptions
+      });
+    }
+  }
+
+  async function loadHistoryData() {
+    if (!historyTableHeader || !historyTableBody) return;
+
+    historyTableHeader.innerHTML = '';
+    historyTableBody.innerHTML = '<tr><td class="text-center text-muted py-8">Loading history...</td></tr>';
+
+    try {
+      const response = await fetch('/api/history');
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        if (data.history && data.history.length > 0) {
+          const rows = data.history;
+          const columns = Object.keys(rows[0]);
+
+          columns.forEach(col => {
+            const th = document.createElement('th');
+            th.textContent = col;
+            historyTableHeader.appendChild(th);
+          });
+
+          historyTableBody.innerHTML = '';
+          rows.forEach(row => {
+            const tr = document.createElement('tr');
+            columns.forEach(col => {
+              const td = document.createElement('td');
+              const val = row[col];
+              td.textContent = val !== null && val !== undefined ? val : 'NULL';
+              td.classList.add('cell-multiline');
+              if (val === null || val === undefined) td.classList.add('text-null');
+              tr.appendChild(td);
+            });
+            historyTableBody.appendChild(tr);
+          });
+        } else {
+          historyTableBody.innerHTML = '<tr><td class="text-center text-muted py-8">No history records found.</td></tr>';
+        }
+
+        renderStatisticsCharts(data.stats || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch history:", err);
+      historyTableBody.innerHTML = `
+        <tr>
+          <td class="error-cell">
+            <div class="error-container">
+              <span class="error-icon">⚠️</span>
+              <div class="error-details">
+                <strong>Error Loading History</strong>
+                <p>${err.message || "Failed to reach the backend service."}</p>
+              </div>
+            </div>
+          </td>
+        </tr>`;
+    }
+  }
+
+  if (historyBtn && historyModal) {
+    historyBtn.addEventListener('click', () => {
+      historyModal.classList.remove('hidden');
+      loadHistoryData();
+    });
+  }
+
+  if (historyModalCloseBtn && historyModal) {
+    historyModalCloseBtn.addEventListener('click', () => {
+      historyModal.classList.add('hidden');
     });
   }
 
@@ -325,7 +495,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // --- Reset Defaults Handler ---
   if (configResetBtn) {
     configResetBtn.addEventListener('click', async () => {
       localStorage.removeItem('crbot_model');
@@ -336,8 +505,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       await triggerConfigSave({ closeModal: false });
     });
   }
-
-  // --- Table & Multi-Tab Rendering Helpers ---
 
   function renderTableResult(result) {
     if (!resultsHeader || !resultsBody) return;
@@ -416,7 +583,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderTableResult(results[0]);
   }
 
-  // --- Translation & Execution Logic ---
   async function translatePrompt() {
     const promptText = aiPrompt ? aiPrompt.value.trim() : "";
     if (!promptText) return;
@@ -562,7 +728,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             role: 'model',
             text: sql
           });
-          // Keep only the last 10 messages (5 turns)
           chatHistory = chatHistory.slice(-10);
           updateHistoryTurnsSubtitle();
         }
@@ -596,8 +761,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       console.error("Failed to execute SQL:", err);
     }
   }
-
-  // --- Button Event Bindings ---
 
   if (aiPrompt) {
     aiPrompt.addEventListener('input', () => {
