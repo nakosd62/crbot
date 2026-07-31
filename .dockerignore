@@ -5,12 +5,17 @@
 # Ignore local virtual environment
 venv/
 
-# Ignore bash scripts containing secrets
+# Ignore bash scripts
 launch_app.sh
 kill_app.sh
 gcp_deploy.sh
+
+# Ignre env files containing secrets
 .env
 .env-sample
+
+# Ignore local translatiom stats database
+translation_stats.db
 
 # Ignore log files
 *.log
