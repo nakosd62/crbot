@@ -13,10 +13,13 @@ venv/
 launch_app.sh
 kill_app.sh
 gcp_deploy.sh
+run_tests.sh
 
 # Ignore testing files
-run_tests.sh
 tests/
+
+# Ignore local stats DB
+translations_stats.db 
 
 # Ignore README
 README.md

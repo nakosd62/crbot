@@ -7,6 +7,7 @@ import sqlite3
 from flask_cors import CORS
 from google import genai
 from google.genai import types
+from google.cloud import storage
 
 app = Flask(__name__, static_folder='.', static_url_path='')
 CORS(app)
@@ -16,10 +17,53 @@ DEFAULT_CONN = os.environ.get(
     "postgresql://postgres:password@host:23456/defaultdb?sslmode=verify-full"
 )
 
-TRANSLATION_STATS_DB_PATH = os.environ.get("TRANSLATION_STATS_DB_PATH", "translation_stats.db")
+# Use Cloud Run's writable ephemeral directory (/tmp) if running in CloudRun
+GCS_BUCKET_NAME = os.environ.get("GCS_BUCKET_NAME")
+DB_FILENAME = os.environ.get("TRANSLATION_STATS_DB_FILENAME", "translation_stats.db")
+if GCS_BUCKET_NAME:
+    TRANSLATION_STATS_DB_PATH = os.path.join("/tmp", DB_FILENAME)
+else:
+    TRANSLATION_STATS_DB_PATH = os.environ.get("TRANSLATION_STATS_DB_PATH", DB_FILENAME)
+
+# --- GCS Helper Functions ---
+
+def download_db_from_gcs():
+    """Downloads SQLite DB file from GCS to local container path on startup."""
+    if not GCS_BUCKET_NAME:
+        return
+    try:
+        storage_client = storage.Client()
+        bucket = storage_client.bucket(GCS_BUCKET_NAME)
+        blob = bucket.blob(DB_FILENAME)
+        
+        if blob.exists():
+            blob.download_to_filename(TRANSLATION_STATS_DB_PATH)
+            print(f"Downloaded {DB_FILENAME} from GCS bucket {GCS_BUCKET_NAME}.")
+        else:
+            print(f"File {DB_FILENAME} not found in bucket. A new DB will be created and uploaded.")
+    except Exception as e:
+        print(f"Error downloading stats DB from GCS: {e}")
+
+
+def upload_db_to_gcs():
+    """Uploads the local SQLite DB file back to GCS."""
+    if not GCS_BUCKET_NAME or not os.path.exists(TRANSLATION_STATS_DB_PATH):
+        return
+    try:
+        storage_client = storage.Client()
+        bucket = storage_client.bucket(GCS_BUCKET_NAME)
+        blob = bucket.blob(DB_FILENAME)
+        blob.upload_from_filename(TRANSLATION_STATS_DB_PATH)
+        print(f"Uploaded {DB_FILENAME} to GCS bucket {GCS_BUCKET_NAME}.")
+    except Exception as e:
+        print(f"Error uploading stats DB to GCS: {e}")
 
 def init_translation_stats_db():
     try:
+        # Step 1: Pull existing DB from Cloud Storage if configured
+        download_db_from_gcs()
+
+        # Step 2: Initialize SQLite tables locally
         with sqlite3.connect(TRANSLATION_STATS_DB_PATH) as conn:
             cursor = conn.cursor()
             cursor.execute("""
@@ -39,6 +83,10 @@ def init_translation_stats_db():
                 );
             """)
             conn.commit()
+
+        # Step 3: Push initialized DB back to GCS
+        upload_db_to_gcs()
+
     except Exception as e:
         print(f"Error initializing SQLite stats DB: {e}")
 
@@ -58,6 +106,29 @@ def resolve_conn_str(conn_str):
         if default_password:
             return conn_str.replace("****", default_password)
     return conn_str
+
+def record_translation(conn_str, nl_prompt, sql_command, gemini_model, duration, input_tokens, output_tokens, total_tokens, thinking_tokens, cached_content_tokens):
+    try:
+        with sqlite3.connect(TRANSLATION_STATS_DB_PATH) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO translations (
+                    connect_string, nl_prompt, sql_command, model, duration, 
+                    input_tokens, output_tokens, total_tokens, 
+                    thinking_tokens, cached_content_tokens
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                conn_str, nl_prompt, sql_command, gemini_model, duration, 
+                input_tokens, output_tokens, total_tokens, 
+                thinking_tokens, cached_content_tokens
+            ))
+            conn.commit()
+
+        # Sync DB back to GCS on write
+        upload_db_to_gcs()
+
+    except Exception as e:
+        print(f"Error recording translation: {e}")
 
 def get_db_connection(conn_str=None):
     return psycopg2.connect(resolve_conn_str(conn_str))
@@ -89,26 +160,6 @@ def get_database_schema(conn_str=None):
     finally:
         if conn:
             conn.close()
-
-
-def record_translation(conn_str, nl_prompt, sql_command, gemini_model, duration, input_tokens, output_tokens, total_tokens, thinking_tokens, cached_content_tokens):
-    try:
-        with sqlite3.connect(TRANSLATION_STATS_DB_PATH) as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                INSERT INTO translations (
-                    connect_string, nl_prompt, sql_command, model, duration, 
-                    input_tokens, output_tokens, total_tokens, 
-                    thinking_tokens, cached_content_tokens
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                conn_str, nl_prompt, sql_command, gemini_model, duration, 
-                input_tokens, output_tokens, total_tokens, 
-                thinking_tokens, cached_content_tokens
-            ))
-            conn.commit()
-    except Exception as e:
-        print(f"Error recording translation: {e}")
 
 @app.route('/')
 def index():
