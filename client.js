@@ -2,7 +2,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   let chatHistory = [];
 
   let DEFAULT_DB_URL = "";
-  let DEFAULT_MODEL = "gemini-3.6-flash";
+  let DEFAULT_MODEL = "";
+  let AVAILABLE_MODELS = [""];
 
   // DOM Elements - Primary Controls
   const aiPrompt = document.getElementById('aiPrompt');
@@ -84,6 +85,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  // Helper function to empty out the results display section
+  function clearResultsDisplay() {
+    if (resultsTabsNav) resultsTabsNav.classList.add('hidden');
+    if (resultsHeader) resultsHeader.innerHTML = '';
+    if (resultsBody) resultsBody.innerHTML = '';
+  }
+
+  // Helper function to reset execution stats to Ready with dashes
+  function resetExecutionStats() {
+    if (execStatus) {
+      execStatus.textContent = "Ready";
+      execStatus.className = "stat-val";
+    }
+    if (execTime) execTime.textContent = "—";
+    if (execRows) execRows.textContent = "—";
+  }
+
   function updateHistoryTurnsSubtitle() {
     const clearMsgEl = document.getElementById('clearHistoryMsg');
     if (!clearMsgEl) return;
@@ -95,26 +113,47 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   async function fetchBackendConfig() {
     try {
-      const response = await fetch('/api/config');
+      const response = await fetch('/api/config', { credentials: 'same-origin' });
       const data = await response.json();
 
       DEFAULT_DB_URL = data.default_database_url || "";
-      DEFAULT_MODEL = data.default_model || "gemini-3.6-flash";
+      DEFAULT_MODEL = data.default_model || "";
+      if (Array.isArray(data.available_models) && data.available_models.length > 0) {
+        AVAILABLE_MODELS = data.available_models;
+      }
 
-      if (!localStorage.getItem('crbot_model')) {
+      // If stored model isn't in available list or isn't set, default to default model
+      const storedModel = localStorage.getItem('crbot_model');
+      if (!storedModel || !AVAILABLE_MODELS.includes(storedModel)) {
         localStorage.setItem('crbot_model', DEFAULT_MODEL);
       }
+      
       // DB URL is session-scoped only; do not carry over from prior browser sessions.
       localStorage.removeItem('crbot_db_url');
       if (!sessionStorage.getItem('crbot_db_url') && DEFAULT_DB_URL) {
         sessionStorage.setItem('crbot_db_url', DEFAULT_DB_URL);
       }
 
+      renderModelRadioButtons();
       loadConfigIntoUI();
       await triggerConfigSave({ closeModal: false });
     } catch (err) {
       console.error("Failed to fetch backend configuration:", err);
     }
+  }
+
+  function renderModelRadioButtons() {
+    const radioGroup = document.getElementById('modalGeminiModelGroup');
+    if (!radioGroup) return;
+
+    const currentSelected = localStorage.getItem('crbot_model') || DEFAULT_MODEL;
+
+    radioGroup.innerHTML = AVAILABLE_MODELS.map(model => `
+      <label class="radio-option">
+        <input type="radio" name="gemini_model" value="${model}" ${model === currentSelected ? 'checked' : ''}>
+        <span class="radio-label">${model}</span>
+      </label>
+    `).join('');
   }
 
   function loadConfig() {
@@ -160,14 +199,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   function loadConfigIntoUI() {
     const config = loadConfig();
 
-    const modelRadios = document.querySelectorAll('input[name="gemini_model"]');
-    modelRadios.forEach(r => r.checked = false);
+    renderModelRadioButtons();
 
+    const modelRadios = document.querySelectorAll('input[name="gemini_model"]');
     let matchingModelRadio = document.querySelector(`input[name="gemini_model"][value="${config.model}"]`);
     if (matchingModelRadio) {
       matchingModelRadio.checked = true;
     } else if (modelRadios.length > 0) {
-      modelRadios[modelRadios.length - 1].checked = true;
+      modelRadios[0].checked = true;
     }
 
     const modalDbUrl = document.getElementById('modalDbUrl');
@@ -181,16 +220,22 @@ document.addEventListener('DOMContentLoaded', async () => {
   async function updateConnectionDetails() {
     const config = loadConfig();
     try {
-      const response = await fetch(`/api/config?database_url=${encodeURIComponent(config.dbUrl)}`);
+      const response = await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ database_url: config.dbUrl })
+      });
+  
       const data = await response.json();
-
+  
       if (data.database_name && data.username) {
         const dbName = data.database_name;
         const username = data.username;
-
+  
         if (connDbName) connDbName.textContent = dbName;
         if (connDbUser) connDbUser.textContent = username;
-
+  
         document.title = `CRBot : Talk to your CockroachDB. Connected to ${dbName} as ${username}`;
       }
     } catch (err) {
@@ -206,6 +251,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     const unmaskedDbUrl = unmaskConnectionDbUrl(modalDbUrlInput, currentConfig.dbUrl);
 
     saveConfig(selectedModel, unmaskedDbUrl);
+
+    try {
+      await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ database_url: unmaskedDbUrl })
+      });
+    } catch (err) {
+      console.error("Failed to update session config on server:", err);
+    }
 
     if (options.closeModal && configModal) {
       configModal.classList.add('hidden');
@@ -268,7 +324,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       maintainAspectRatio: false,
       plugins: { 
         legend: { 
-          display: false // Hides the legend for all charts
+          display: false
         } 
       },
       scales: {
@@ -345,7 +401,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     historyTableBody.innerHTML = '<tr><td class="text-center text-muted py-8">Loading history...</td></tr>';
 
     try {
-      const response = await fetch('/api/history');
+      const response = await fetch('/api/history', { credentials: 'same-origin' });
       const data = await response.json();
 
       if (response.ok && data.success) {
@@ -502,6 +558,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   async function translatePrompt() {
+    clearResultsDisplay();
+    resetExecutionStats();
+
     const promptText = aiPrompt ? aiPrompt.value.trim() : "";
     if (!promptText) return;
 
@@ -515,6 +574,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const response = await fetch('/api/translate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
         body: JSON.stringify({
           prompt: promptText,
           history: chatHistory,
@@ -543,12 +603,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (transTime) transTime.textContent = "—";
         if (tokensTotal) tokensTotal.textContent = "—";
 
-        if (execStatus) {
-          execStatus.textContent = "Ready";
-          execStatus.className = "stat-val";
-        }
-        if (execTime) execTime.textContent = "—";
-        if (execRows) execRows.textContent = "—";
+        resetExecutionStats();
 
         console.error("Translation Error:", data.error || "Unknown error");
 
@@ -579,12 +634,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (transTime) transTime.textContent = "—";
       if (tokensTotal) tokensTotal.textContent = "—";
 
-      if (execStatus) {
-        execStatus.textContent = "Ready";
-        execStatus.className = "stat-val";
-      }
-      if (execTime) execTime.textContent = "—";
-      if (execRows) execRows.textContent = "—";
+      resetExecutionStats();
 
       console.error("Failed to translate prompt:", err);
 
@@ -608,6 +658,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   async function executeSql() {
+    clearResultsDisplay();
+
     const sql = getSqlQuery();
     if (!sql) return;
 
@@ -621,6 +673,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const response = await fetch('/api/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
         body: JSON.stringify({
           sql: sql,
           database_url: config.dbUrl
@@ -690,12 +743,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (transTime) transTime.textContent = "—";
       if (tokensTotal) tokensTotal.textContent = "—";
 
-      if (execStatus) {
-        execStatus.textContent = "Ready";
-        execStatus.className = "stat-val";
+      resetExecutionStats();
+    });
+
+    aiPrompt.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        translatePrompt();
       }
-      if (execTime) execTime.textContent = "—";
-      if (execRows) execRows.textContent = "—";
     });
   }
 
@@ -716,10 +771,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         setSqlQuery('');
         if (aiPrompt) aiPrompt.value = '';
         if (transStatus) transStatus.textContent = "Ready";
-        if (execStatus) execStatus.textContent = "Ready";
-        if (resultsHeader) resultsHeader.innerHTML = '';
+        resetExecutionStats();
+        clearResultsDisplay();
         if (resultsBody) resultsBody.innerHTML = '<tr><td class="text-center text-muted py-8">The answer will be displayed here.</td></tr>';
-        if (resultsTabsNav) resultsTabsNav.classList.add('hidden');
 
         updateHistoryTurnsSubtitle();
       } catch (err) {

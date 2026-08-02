@@ -1233,7 +1233,7 @@ textarea:focus {
   min-height: 0;
 }
 
-* History Modal Grid for Charts */
+/* History Modal Grid for Charts */
 .charts-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1255,91 +1255,16 @@ textarea:focus {
 .stats-charts-vertical-container {
   display: flex;
   flex-direction: column;
-  justify-content: space-around;
+  justify-content: space-between;
   align-items: center;
   height: 500px;
   width: 100%;
+  padding: 0.25rem 0;
 }
 
 .vertical-chart-card {
   width: 75%;
   height: 25%;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  background: rgba(5, 8, 16, 0.4);
-  border: 1px solid var(--bg-card-border);
-  border-radius: 8px;
-  padding: 0.5rem 0.75rem;
-}
-
-.vertical-chart-card h3 {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  margin-bottom: 0.25rem;
-}
-
-.vertical-chart-card .chart-wrapper {
-  flex: 1;
-  position: relative;
-  min-height: 0;
-  width: 100%;
-}
-
-/* Vertical Layout for 3 Stats Charts */
-.stats-charts-vertical-container {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  align-items: center;
-  height: 600px; /* Increased overall height */
-  width: 100%;
-  padding: 0.25rem 0;
-}
-
-.vertical-chart-card {
-  width: 75%;
-  height: 31%; /* Increased card height from 25% to 31% */
-  margin: 0.15rem auto; /* Reduced vertical spacing */
-  display: flex;
-  flex-direction: column;
-  background: rgba(5, 8, 16, 0.4);
-  border: 1px solid var(--bg-card-border);
-  border-radius: 8px;
-  padding: 0.25rem 0.5rem; /* Compact padding */
-}
-
-.vertical-chart-card h3 {
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  margin-bottom: 0.15rem;
-}
-
-.vertical-chart-card .chart-wrapper {
-  flex: 1;
-  position: relative;
-  min-height: 0;
-  width: 100%;
-}
-
-/* Vertical Layout for 3 Stats Charts */
-.stats-charts-vertical-container {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  align-items: center;
-  height: 500px; /* Reduced container height */
-  width: 100%;
-  padding: 0.25rem 0;
-}
-
-.vertical-chart-card {
-  width: 75%;
-  height: 25%; /* Reduced card height by ~20% */
   margin: 0.1rem auto;
   display: flex;
   flex-direction: column;
@@ -1354,7 +1279,7 @@ textarea:focus {
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
-  margin-bottom: 0.1rem;
+  margin-bottom: 0.15rem;
 }
 
 .vertical-chart-card .chart-wrapper {

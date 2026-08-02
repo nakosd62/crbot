@@ -2,7 +2,9 @@ import os
 import random
 import re
 import time
-from flask import Flask, request, jsonify, send_from_directory
+import uuid
+from urllib.parse import urlparse, urlunparse
+from flask import Flask, request, jsonify, make_response, send_from_directory
 import psycopg2
 import sqlparse
 import sqlite3
@@ -19,6 +21,17 @@ DEFAULT_CONN = os.environ.get(
     "postgresql://postgres:password@host:23456/defaultdb?sslmode=verify-full"
 )
 
+# --- Model Configuration ---
+# Parse available models from GEMINI_AVAILABLE_MODELS env var (comma-separated).
+# Fallback to default models if env variable is unset or empty.
+raw_models_env = os.environ.get("GEMINI_AVAILABLE_MODELS", "")
+AVAILABLE_MODELS = [m.strip() for m in raw_models_env.split(",") if m.strip()]
+if not AVAILABLE_MODELS:
+    AVAILABLE_MODELS = ["gemini-3.6-flash", "gemini-3.5-flash-lite"]
+
+# First model in the list is the default model
+DEFAULT_MODEL = os.environ.get("GEMINI_MODEL") or AVAILABLE_MODELS[0]
+
 # Use Cloud Run's writable ephemeral directory (/tmp) if running in CloudRun
 GCS_BUCKET_NAME = os.environ.get("GCS_BUCKET_NAME")
 DB_FILENAME = os.environ.get("TRANSLATION_STATS_DB_FILENAME", "translation_stats.db")
@@ -26,6 +39,58 @@ if GCS_BUCKET_NAME:
     TRANSLATION_STATS_DB_PATH = os.path.join("/tmp", DB_FILENAME)
 else:
     TRANSLATION_STATS_DB_PATH = os.environ.get("TRANSLATION_STATS_DB_PATH", DB_FILENAME)
+
+# --- Session Management via SQLite ---
+
+def get_or_create_session_id():
+    """Extracts session_id from request cookies or header, or generates a new one."""
+    session_id = request.cookies.get('crbot_session_id') or request.headers.get('X-Session-ID')
+    if not session_id:
+        session_id = str(uuid.uuid4())
+    return session_id
+
+def set_session_db_url(session_id, db_url):
+    """Persists or updates the database connection URL for a specific session in SQLite."""
+    try:
+        with sqlite3.connect(TRANSLATION_STATS_DB_PATH) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO sessions (session_id, database_url, updated_at)
+                VALUES (?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(session_id) DO UPDATE SET
+                    database_url = excluded.database_url,
+                    updated_at = CURRENT_TIMESTAMP;
+            """, (session_id, db_url))
+            conn.commit()
+
+        # Sync update back to GCS
+        upload_db_to_gcs()
+    except Exception as e:
+        print(f"Error saving session to SQLite: {e}")
+
+def get_session_db_url(session_id):
+    """Retrieves the active DB URL for a session from SQLite or defaults to DEFAULT_CONN."""
+    try:
+        with sqlite3.connect(TRANSLATION_STATS_DB_PATH) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT database_url FROM sessions WHERE session_id = ?", (session_id,))
+            row = cursor.fetchone()
+            if row and row[0]:
+                return row[0]
+    except Exception as e:
+        print(f"Error fetching session from SQLite: {e}")
+    return DEFAULT_CONN
+
+def apply_session_cookie(response, session_id):
+    """Attaches the session cookie to the Flask HTTP response."""
+    response.set_cookie(
+        'crbot_session_id',
+        session_id,
+        httponly=True,
+        samesite='Lax',
+        max_age=86400  # 1 day session
+    )
+    return response
 
 # --- GCS Helper Functions ---
 
@@ -45,7 +110,6 @@ def download_db_from_gcs():
             print(f"File {DB_FILENAME} not found in bucket. A new DB will be created and uploaded.")
     except Exception as e:
         print(f"Error downloading stats DB from GCS: {e}")
-
 
 def upload_db_to_gcs():
     """Uploads the local SQLite DB file back to GCS."""
@@ -68,6 +132,8 @@ def init_translation_stats_db():
         # Step 2: Initialize SQLite tables locally
         with sqlite3.connect(TRANSLATION_STATS_DB_PATH) as conn:
             cursor = conn.cursor()
+            
+            # Translations telemetry table
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS translations (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -82,6 +148,15 @@ def init_translation_stats_db():
                     thinking_tokens INTEGER,
                     cached_content_tokens INTEGER,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+
+            # Sessions table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS sessions (
+                    session_id TEXT PRIMARY KEY,
+                    database_url TEXT NOT NULL,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """)
             conn.commit()
@@ -100,14 +175,12 @@ def get_gemini_api_keys():
         keys.extend(k.strip() for k in preset_keys_env.split(",") if k.strip())
     return keys
 
-
 def pick_gemini_api_key():
     """Randomly select a Gemini API key from configured env keys."""
     keys = get_gemini_api_keys()
     if not keys:
         return None
     return random.choice(keys)
-
 
 def redact_connection_url(conn_str):
     """Return connection URL with password blanked for logging/stats."""
@@ -118,23 +191,29 @@ def redact_connection_url(conn_str):
         return f"{match.group(1)}{match.group(2)}:****{match.group(4)}"
     return conn_str
 
+def mask_db_url(url_str):
+    """Masks credentials in a database connection URL for display."""
+    return re.sub(r'://([^:]+):([^@]+)@', r'://\1:*****@', url_str)
 
 def resolve_conn_str(conn_str):
-    if not conn_str:
-        return DEFAULT_CONN
-    if "****" in conn_str:
-        default_password = ""
-        if "@" in DEFAULT_CONN:
-            try:
-                parts = DEFAULT_CONN.split("@")
-                creds = parts[0].split("://")[1]
-                if ":" in creds:
-                    _, default_password = creds.split(":", 1)
-            except Exception:
-                pass
-        if default_password:
-            return conn_str.replace("****", default_password)
-    return conn_str
+    """Replaces masked **** password in input URL with default connection password."""
+    if not conn_str or "****" not in conn_str:
+        return conn_str or DEFAULT_CONN
+    
+    try:
+        parsed_default = urlparse(DEFAULT_CONN)
+        parsed_target = urlparse(conn_str)
+        
+        username = parsed_target.username or ""
+        password = parsed_default.password or ""
+        hostname = parsed_target.hostname or ""
+        port = f":{parsed_target.port}" if parsed_target.port else ""
+        
+        netloc = f"{username}:{password}@{hostname}{port}"
+        return urlunparse(parsed_target._replace(netloc=netloc))
+    except Exception as e:
+        print(f"Error resolving connection string password: {e}")
+        return conn_str
 
 def record_translation(conn_str, nl_prompt, sql_command, gemini_model, duration, input_tokens, output_tokens, total_tokens, thinking_tokens, cached_content_tokens):
     try:
@@ -200,7 +279,7 @@ def index():
 def translate_query():
     data = request.get_json() or {}
 
-    gemini_model = data.get('gemini_model') or os.environ.get("GEMINI_MODEL")
+    gemini_model = data.get('gemini_model') or DEFAULT_MODEL
     api_key = pick_gemini_api_key()
 
     if not api_key:
@@ -210,7 +289,9 @@ def translate_query():
     if not prompt:
         return jsonify({'error': 'Prompt cannot be empty'}), 400
         
-    conn_str = data.get('database_url') or DEFAULT_CONN
+    session_id = get_or_create_session_id()
+    conn_str = data.get('database_url') or get_session_db_url(session_id)
+
     history = data.get('history', [])[-10:]
 
     try:
@@ -230,7 +311,7 @@ def translate_query():
             "Responding to prompts that relate to the database and, specifically, generating SQL is your highest priority.\n"
             "However, if you cannot do that but can respond to the prompt succinctly based on your general-purpose training,\n"
             "return your response enclosed as follows: SELECT '<your response>' as General_Knowledge;\n"
-            "If you cannot respond at all with reasonable confidence, return the following: SELECT 'I am not able to respond to your prompt ¯\\\_(ツ)_/¯' as Regrets;\n"
+            "If you cannot respond at all with reasonable confidence, return the following: SELECT 'I am not able to respond to your prompt' as Regrets;\n"
             "If you run into any error, return the error enclosed as follows: SELECT 'I ran into this error: <the error>' as Error;\n"
             "If you can split the prompt and handle part of it based on the database and part from general knowledge do that using separate queries for each part. Do not attempt to join the result sets.\n"
         )
@@ -286,7 +367,7 @@ def translate_query():
 
         record_translation(conn_str, prompt, generated_sql, gemini_model, duration, input_tokens, output_tokens, total_tokens, thinking_tokens, cached_content_tokens)
             
-        return jsonify({
+        resp = jsonify({
             'success': True,
             'sql': generated_sql,
             'input_tokens': input_tokens,
@@ -296,29 +377,32 @@ def translate_query():
             'cached_content_tokens': cached_content_tokens,
             'duration': duration
         })
+        return apply_session_cookie(resp, session_id)
     except Exception as e:
-        return jsonify({
+        resp = jsonify({
             'success': False,
             'error': f"Gemini Error: {str(e)}"
-        }), 500
+        })
+        return apply_session_cookie(resp, session_id), 500
 
-@app.route('/api/config', methods=['GET'])
-def get_config():
-    # 1. Grab environment configuration
-    default_db_url = os.environ.get(
-        "DATABASE_URL", 
-        "postgresql://postgres:password@localhost:26257/defaultdb?sslmode=verify-full"
-    )
-    default_model = os.environ.get("GEMINI_MODEL")
+@app.route('/api/config', methods=['GET', 'POST'])
+def handle_config():
+    session_id = get_or_create_session_id()
     
-    # 2. Extract active connection details if query param provided or default
-    conn_str = request.args.get('database_url') or default_db_url
-    db_name = "Unknown"
-    username = "Unknown"
-    conn = None
+    if request.method == 'POST':
+        data = request.get_json() or {}
+        new_db_url = data.get('database_url') 
+        if new_db_url:
+            resolved_url = resolve_conn_str(new_db_url)
+            set_session_db_url(session_id, resolved_url)
 
+    # Fetch active DB URL for this session
+    active_conn_str = get_session_db_url(session_id)
+    
+    db_name, username = "Unknown", "Unknown"
+    conn = None
     try:
-        conn = get_db_connection(conn_str)
+        conn = get_db_connection(active_conn_str)
         with conn.cursor() as cursor:
             cursor.execute("SELECT current_database(), CURRENT_USER;")
             row = cursor.fetchone()
@@ -330,22 +414,27 @@ def get_config():
         if conn:
             conn.close()
 
-    return jsonify({
-        'default_database_url': default_db_url,
-        'default_model': default_model,
+    resp = jsonify({
+        'session_id': session_id,
+        'default_database_url': DEFAULT_CONN,
+        'default_model': DEFAULT_MODEL,
+        'available_models': AVAILABLE_MODELS,
         'database_name': db_name,
         'username': username
     })
-
+    return apply_session_cookie(resp, session_id)
 
 @app.route('/api/execute', methods=['POST'])
 def execute_query():
+    session_id = get_or_create_session_id()
     data = request.get_json() or {}
+    
+    conn_str = data.get('database_url') or get_session_db_url(session_id)
+    
     raw_query = (data.get('sql') or data.get('query') or '').strip()
     if not raw_query:
         return jsonify({'error': 'Query cannot be empty'}), 400
-    
-    conn_str = data.get('database_url') or DEFAULT_CONN
+
     conn = None
     start_time = time.time()
     
@@ -401,24 +490,25 @@ def execute_query():
 
         execution_time_ms = round((time.time() - start_time) * 1000)
 
-        return jsonify({
+        resp = jsonify({
             'success': True,
             'results': results,
             'rowCount': total_row_count,
             'executionTimeMs': execution_time_ms
         })
+        return apply_session_cookie(resp, session_id)
 
     except Exception as e:
         execution_time_ms = round((time.time() - start_time) * 1000, 2)
-        return jsonify({
+        resp = jsonify({
             'success': False,
             'error': str(e),
             'executionTimeMs': execution_time_ms
-        }), 400
+        })
+        return apply_session_cookie(resp, session_id), 400
     finally:
         if conn:
             conn.close()
-
 
 @app.route('/api/history', methods=['GET'])
 def get_translation_history():
@@ -457,7 +547,6 @@ def get_translation_history():
 
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
-
 
 if __name__ == '__main__':
     hostname = os.environ.get("CRBOT_HOSTNAME", "0.0.0.0")
