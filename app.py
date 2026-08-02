@@ -13,7 +13,7 @@ from google import genai
 from google.genai import types
 from google.cloud import storage
 
-app = Flask(__name__, static_folder='.', static_url_path='')
+app = Flask(__name__, static_folder='webClient', static_url_path='')
 CORS(app)
 
 DEFAULT_CONN = os.environ.get(
