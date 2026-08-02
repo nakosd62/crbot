@@ -1,6 +1,9 @@
 # Virtual environment
 venv/
 
+# Local stats database
+translation_stats.db 
+
 # Logs
 *.log
 

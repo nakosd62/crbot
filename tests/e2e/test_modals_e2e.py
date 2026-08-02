@@ -35,18 +35,10 @@ def test_config_modal_open_save_and_close(page: Page):
     # 3. Fill in DB URL
     page.fill("#modalDbUrl", "postgresql://postgres:secret@localhost:5432/my_app_db")
 
-    # 4. Dispatch 'change' event on the radio input so JS listener handles visibility
-    page.dispatch_event("input[name='api_key_choice'][value='custom']", "change")
-
-    # 5. Fill in Custom API Key
-    custom_api_input = page.locator("#modalCustomApiKey")
-    expect(custom_api_input).to_be_visible()
-    custom_api_input.fill("test-gemini-key-12345")
-
-    # 6. Click Save Changes button
+    # 4. Click Save Changes button
     page.click("#configSaveBtn")
 
-    # 7. Verify modal is hidden
+    # 5. Verify modal is hidden
     expect(config_modal).not_to_be_visible()
 
 

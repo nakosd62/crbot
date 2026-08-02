@@ -4,6 +4,10 @@ CRBot is an interactive, high-fidelity web console and Gemini-powered assistant 
 
 ---
 
+*****    TO BE REFRESHED     *****
+
+---
+
 ## Features
 - **Natural Language to SQL**: Translate query ideas into executable CockroachDB SQL statements using Gemini models.
 - **Interactive SQL Console**: Execute arbitrary raw SQL commands against CockroachDB with dynamic table rendering.
@@ -29,21 +33,12 @@ pip install -r requirements.txt
 ```
 
 ### 3. Environment Variables
-CRBot uses the following environment variables for configuration:
-
-| Variable | Description | Default |
-| :--- | :--- | :--- |
-| `DATABASE_URL` | Connection string to CockroachDB | `postgresql://postgres:password@localhost:26257/defaultdb?sslmode=verify-full` |
-| `GEMINI_API_KEY` | Your Google Gemini API Key | *None (Required for translation)* |
-| `GEMINI_MODEL` | Gemini model to use for translations | `gemini-2.5-flash` |
-| `CRBOT_HOSTNAME` | Host address Flask server binds to | `0.0.0.0` |
-| `CRBOT_PORT` | Port number Flask server binds to | `3000` |
+CRBot uses environment variables for configuration. See .env.sample file for the list.
 
 ---
 
 ## Running the Application
 
-### Option A: Using Helper Scripts (Recommended)
 You can use the provided bash scripts to quickly spin up the app and expose it externally using ngrok.
 
 1. **Launch the App**:
@@ -58,13 +53,6 @@ You can use the provided bash scripts to quickly spin up the app and expose it e
    ```
    This terminates both the Flask server and the ngrok tunnel.
 
-### Option B: Manual Execution
-To run the server manually in the foreground:
-```bash
-export DATABASE_URL="postgresql://<username>:<password>@<host>:<port>/<database>"
-export GEMINI_API_KEY="your-api-key"
-./venv/bin/python3 app.py
-```
 Open your browser and navigate to: [http://localhost:3000](http://localhost:3000)
 
 ---

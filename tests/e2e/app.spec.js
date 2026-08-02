@@ -58,7 +58,7 @@ test.describe('CRBot E2E User Flows', () => {
     await expect(page).toHaveTitle(/CRBot/i);
     await expect(page.locator('#aiPrompt')).toBeVisible();
     await expect(page.locator('#translateBtn')).toBeVisible();
-    await expect(page.locator('#executeBtn')).toBeVisible();
+    await expect(page.locator('#runBtn')).toBeVisible();
   });
 
   test('should translate natural language prompt into SQL', async ({ page }) => {

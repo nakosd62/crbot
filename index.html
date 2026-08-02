@@ -232,7 +232,7 @@
         
         <h3>1. General</h3>
         <p>By default, you are connected to a sample database called <strong>KitchenBank</strong> as a user called <strong>BankClerk</strong> that you may use as playground.</p>
-        <p>If you prefer to use your own database, click the <strong>gear icon</strong> on the upper right corner to configure your connection.</p>
+        <p>If you prefer to use your own database, click the <strong>gear icon</strong> on the upper right corner to configure your connection. Custom connection settings apply only for the current browser session and are cleared when you close the tab or window.</p>
 
         <h3>2. Natural Language Query</h3>
         <p>Type your query or instruction into the top text box in plain English or any other language. Click <strong>Translate Prompt</strong> to preview the generated SQL statement.</p>
@@ -246,8 +246,6 @@
 
         <h3>5. Selecting AI Model</h3>
         <p>By default, the application uses Gemini 3.6 Flash. You can change that in the configuration popup (<strong>gear icon</strong>).</p>
-        <p>The quota of the default Gemini API Key may be exhausted. In that case, use the configuration popup to select an alternative bundled key or enter your own.</p> 
-
         <h3>6. Multi-turn conversations</h3>
         <p>CRBot remembers the last 10 queries/prompts and takes them int account before responding. If you want to reset chat histroy open the Configuration popup and click the related button</p>
       </div>
@@ -348,10 +346,6 @@
           <span class="config-label">2. Gemini Model Choice</span>
           <div class="radio-group" id="modalGeminiModelGroup">
             <label class="radio-option">
-              <input type="radio" name="gemini_model" value="gemini-2.5-flash">
-              <span class="radio-label">gemini-2.5-flash</span>
-            </label>
-            <label class="radio-option">
               <input type="radio" name="gemini_model" value="gemini-3.5-flash-lite">
               <span class="radio-label">gemini-3.5-flash-lite</span>
             </label>
@@ -360,18 +354,6 @@
               <span class="radio-label">gemini-3.6-flash</span>
             </label>
           </div>
-        </div>
-
-        <!-- Section 3: Gemini API Key (Radio Group) -->
-        <div class="config-section">
-          <span class="config-label">3. Gemini API Key</span>
-          <div class="radio-group" id="modalApiKeyGroup">
-            <label class="radio-option">
-              <input type="radio" name="api_key_choice" value="custom" checked>
-              <span class="radio-label">Your own Key...</span>
-            </label>
-          </div>
-          <input type="password" id="modalCustomApiKey" class="config-input hidden" style="margin-top: 0.5rem;" placeholder="Enter your own API Key" autocomplete="off">
         </div>
 
         <!-- Modal Action Buttons Alignment -->

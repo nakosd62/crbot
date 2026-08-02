@@ -42,21 +42,21 @@ if command -v lsof &> /dev/null; then
     fi
 fi
 pkill -9 -f "app.py" 2>/dev/null
-pkill -9 -f "ngrok http" 2>/dev/null
+# pkill -9 -f "ngrok http" 2>/dev/null
 sleep 2
 
 # Start server
 echo "Starting Flask server..."
 nohup ./venv/bin/python3 app.py > app.log 2>&1 &
-sleep 2
+# sleep 2
 
-if command -v ngrok &> /dev/null; then
-    echo "Starting ngrok..."
-    nohup ngrok http 127.0.0.1:$CRBOT_PORT > ngrok.log 2>&1 &
-else
-    echo "Notice: ngrok command not found. Skipping ngrok tunnel."
-    echo "The application is running locally at http://localhost:$CRBOT_PORT"
-fi
+# if command -v ngrok &> /dev/null; then
+#     echo "Starting ngrok..."
+#     nohup ngrok http 127.0.0.1:$CRBOT_PORT > ngrok.log 2>&1 &
+# else
+#     echo "Notice: ngrok command not found. Skipping ngrok tunnel."
+#    echo "The application is running locally at http://localhost:$CRBOT_PORT"
+# fi
 
 # Monitor output log
 echo "Tail app.log for standard output / error."

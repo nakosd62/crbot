@@ -3,8 +3,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   let DEFAULT_DB_URL = "";
   let DEFAULT_MODEL = "gemini-3.6-flash";
-  let DEFAULT_API_KEY = "";
-  let PRESET_KEYS = [];
 
   // DOM Elements - Primary Controls
   const aiPrompt = document.getElementById('aiPrompt');
@@ -102,19 +100,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       DEFAULT_DB_URL = data.default_database_url || "";
       DEFAULT_MODEL = data.default_model || "gemini-3.6-flash";
-      PRESET_KEYS = data.preset_keys || [];
-      DEFAULT_API_KEY = PRESET_KEYS[0] || "";
-
-      initializeApiKeyUI();
 
       if (!localStorage.getItem('crbot_model')) {
         localStorage.setItem('crbot_model', DEFAULT_MODEL);
       }
-      if (!localStorage.getItem('crbot_api_key') && DEFAULT_API_KEY) {
-        localStorage.setItem('crbot_api_key', DEFAULT_API_KEY);
-      }
-      if (!localStorage.getItem('crbot_db_url') && DEFAULT_DB_URL) {
-        localStorage.setItem('crbot_db_url', DEFAULT_DB_URL);
+      // DB URL is session-scoped only; do not carry over from prior browser sessions.
+      localStorage.removeItem('crbot_db_url');
+      if (!sessionStorage.getItem('crbot_db_url') && DEFAULT_DB_URL) {
+        sessionStorage.setItem('crbot_db_url', DEFAULT_DB_URL);
       }
 
       loadConfigIntoUI();
@@ -127,44 +120,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   function loadConfig() {
     return {
       model: localStorage.getItem('crbot_model') || DEFAULT_MODEL,
-      apiKey: localStorage.getItem('crbot_api_key') || DEFAULT_API_KEY,
-      dbUrl: localStorage.getItem('crbot_db_url') || DEFAULT_DB_URL
+      dbUrl: sessionStorage.getItem('crbot_db_url') || DEFAULT_DB_URL
     };
   }
 
-  function saveConfig(model, apiKey, dbUrl) {
+  function saveConfig(model, dbUrl) {
     if (model) localStorage.setItem('crbot_model', model);
-    if (apiKey !== undefined) localStorage.setItem('crbot_api_key', apiKey);
-    if (dbUrl !== undefined) localStorage.setItem('crbot_db_url', dbUrl);
-  }
-
-  function initializeApiKeyUI() {
-    const group = document.getElementById('modalApiKeyGroup');
-    if (!group) return;
-
-    if (PRESET_KEYS.length > 0) {
-      const customOption = Array.from(group.querySelectorAll('.radio-option'))
-        .find(opt => opt.querySelector('input[value="custom"]'));
-
-      group.querySelectorAll('.radio-option').forEach(opt => {
-        if (opt !== customOption) opt.remove();
-      });
-
-      PRESET_KEYS.forEach(key => {
-        let label = key;
-        if (key.length > 12) {
-          label = key.substring(0, 4) + "..." + key.substring(key.length - 5);
-        }
-
-        const option = document.createElement('label');
-        option.className = 'radio-option';
-        option.innerHTML = `
-          <input type="radio" name="api_key_choice" value="${key}">
-          <span class="radio-label">${label}</span>
-        `;
-        group.insertBefore(option, customOption);
-      });
-    }
+    if (dbUrl !== undefined) sessionStorage.setItem('crbot_db_url', dbUrl);
   }
 
   function maskConnectionDbUrl(url) {
@@ -213,27 +175,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       modalDbUrl.value = maskConnectionDbUrl(config.dbUrl);
     }
 
-    const apiKeyRadios = document.querySelectorAll('input[name="api_key_choice"]');
-    apiKeyRadios.forEach(r => r.checked = false);
-
-    const apiKeyRadio = document.querySelector(`input[name="api_key_choice"][value="${config.apiKey}"]`);
-    const modalCustomApiKey = document.getElementById('modalCustomApiKey');
-
-    if (apiKeyRadio) {
-      apiKeyRadio.checked = true;
-      if (modalCustomApiKey) modalCustomApiKey.classList.add('hidden');
-    } else if (config.apiKey) {
-      const customRadio = document.querySelector('input[name="api_key_choice"][value="custom"]');
-      if (customRadio) customRadio.checked = true;
-      if (modalCustomApiKey) {
-        modalCustomApiKey.value = config.apiKey;
-        modalCustomApiKey.classList.remove('hidden');
-      }
-    } else if (apiKeyRadios.length > 0) {
-      apiKeyRadios[0].checked = true;
-      if (modalCustomApiKey) modalCustomApiKey.classList.add('hidden');
-    }
-
     updateHistoryTurnsSubtitle();
   }
 
@@ -259,21 +200,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   async function triggerConfigSave(options = { closeModal: true }) {
     const selectedModel = document.querySelector('input[name="gemini_model"]:checked')?.value || DEFAULT_MODEL;
-    const selectedApiKeyChoice = document.querySelector('input[name="api_key_choice"]:checked')?.value;
-    const modalCustomApiKey = document.getElementById('modalCustomApiKey');
-
-    let apiKey = DEFAULT_API_KEY;
-    if (selectedApiKeyChoice === 'custom' && modalCustomApiKey) {
-      apiKey = modalCustomApiKey.value.trim();
-    } else if (selectedApiKeyChoice) {
-      apiKey = selectedApiKeyChoice;
-    }
 
     const modalDbUrlInput = document.getElementById('modalDbUrl')?.value.trim() || "";
     const currentConfig = loadConfig();
     const unmaskedDbUrl = unmaskConnectionDbUrl(modalDbUrlInput, currentConfig.dbUrl);
 
-    saveConfig(selectedModel, apiKey, unmaskedDbUrl);
+    saveConfig(selectedModel, unmaskedDbUrl);
 
     if (options.closeModal && configModal) {
       configModal.classList.add('hidden');
@@ -476,19 +408,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  document.addEventListener('change', (e) => {
-    if (e.target && e.target.name === 'api_key_choice') {
-      const modalCustomApiKey = document.getElementById('modalCustomApiKey');
-      if (modalCustomApiKey) {
-        if (e.target.value === 'custom') {
-          modalCustomApiKey.classList.remove('hidden');
-        } else {
-          modalCustomApiKey.classList.add('hidden');
-        }
-      }
-    }
-  });
-
   if (configSaveBtn) {
     configSaveBtn.addEventListener('click', async () => {
       await triggerConfigSave({ closeModal: true });
@@ -498,8 +417,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (configResetBtn) {
     configResetBtn.addEventListener('click', async () => {
       localStorage.removeItem('crbot_model');
-      localStorage.removeItem('crbot_api_key');
-      localStorage.removeItem('crbot_db_url');
+      sessionStorage.removeItem('crbot_db_url');
 
       loadConfigIntoUI();
       await triggerConfigSave({ closeModal: false });
@@ -601,7 +519,6 @@ document.addEventListener('DOMContentLoaded', async () => {
           prompt: promptText,
           history: chatHistory,
           gemini_model: config.model,
-          api_key: config.apiKey,
           database_url: config.dbUrl
         })
       });

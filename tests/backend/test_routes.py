@@ -1,6 +1,43 @@
 import pytest
 from unittest.mock import patch, MagicMock
 
+from app import redact_connection_url
+
+def test_redact_connection_url_masks_password():
+    conn_str = "postgresql://bankclerk:secret@host:26257/kitchenbank?sslmode=verify-full"
+    assert redact_connection_url(conn_str) == "postgresql://bankclerk:****@host:26257/kitchenbank?sslmode=verify-full"
+
+def test_redact_connection_url_without_password():
+    conn_str = "postgresql://bankclerk@host:26257/kitchenbank"
+    assert redact_connection_url(conn_str) == conn_str
+
+@patch("app.sqlite3.connect")
+def test_record_translation_redacts_connection_url(mock_sqlite_connect):
+    """Should store connection URL with password redacted."""
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+    mock_sqlite_connect.return_value.__enter__.return_value = mock_conn
+    mock_conn.cursor.return_value = mock_cursor
+
+    from app import record_translation
+
+    record_translation(
+        conn_str="postgresql://user:secret@host:26257/mydb",
+        nl_prompt="Find users",
+        sql_command="SELECT 1;",
+        gemini_model="gemini-3.6-flash",
+        duration=120,
+        input_tokens=10,
+        output_tokens=5,
+        total_tokens=15,
+        thinking_tokens=0,
+        cached_content_tokens=0,
+    )
+
+    stored_conn_str = mock_cursor.execute.call_args[0][1][0]
+    assert stored_conn_str == "postgresql://user:****@host:26257/mydb"
+    assert "secret" not in stored_conn_str
+
 def test_index_route(client):
     """Should serve index.html from root folder."""
     response = client.get('/')
@@ -31,7 +68,7 @@ def test_translate_query_missing_api_key(client):
 
 def test_translate_query_empty_prompt(client):
     """Should return 400 if prompt is empty."""
-    response = client.post('/api/translate', json={'api_key': 'key', 'prompt': '   '})
+    response = client.post('/api/translate', json={'prompt': '   '})
     assert response.status_code == 400
     assert "Prompt cannot be empty" in response.get_json()['error']
 
@@ -56,7 +93,6 @@ def test_translate_query_success_strips_markdown(mock_record, mock_genai_client,
     mock_genai_client.return_value = mock_client_instance
 
     payload = {
-        'api_key': 'test_key',
         'prompt': 'Show all users',
         'history': [{'role': 'user', 'text': 'hi'}]
     }

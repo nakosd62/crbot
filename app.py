@@ -1,4 +1,6 @@
 import os
+import random
+import re
 import time
 from flask import Flask, request, jsonify, send_from_directory
 import psycopg2
@@ -90,6 +92,33 @@ def init_translation_stats_db():
     except Exception as e:
         print(f"Error initializing SQLite stats DB: {e}")
 
+def get_gemini_api_keys():
+    """Collect Gemini API keys from env (preset list + optional single key)."""
+    keys = []
+    preset_keys_env = os.environ.get("GEMINI_PRESET_KEYS", "")
+    if preset_keys_env:
+        keys.extend(k.strip() for k in preset_keys_env.split(",") if k.strip())
+    return keys
+
+
+def pick_gemini_api_key():
+    """Randomly select a Gemini API key from configured env keys."""
+    keys = get_gemini_api_keys()
+    if not keys:
+        return None
+    return random.choice(keys)
+
+
+def redact_connection_url(conn_str):
+    """Return connection URL with password blanked for logging/stats."""
+    if not conn_str:
+        return conn_str
+    match = re.match(r'^(postgresql://)([^:]+):([^@]+)(@.+)$', conn_str)
+    if match:
+        return f"{match.group(1)}{match.group(2)}:****{match.group(4)}"
+    return conn_str
+
+
 def resolve_conn_str(conn_str):
     if not conn_str:
         return DEFAULT_CONN
@@ -113,14 +142,16 @@ def record_translation(conn_str, nl_prompt, sql_command, gemini_model, duration,
             cursor = conn.cursor()
             cursor.execute("""
                 INSERT INTO translations (
-                    connect_string, nl_prompt, sql_command, model, duration, 
-                    input_tokens, output_tokens, total_tokens, 
-                    thinking_tokens, cached_content_tokens
+                    connect_string, 
+                    nl_prompt, sql_command, 
+                    model, 
+                    duration, input_tokens, output_tokens, total_tokens, thinking_tokens, cached_content_tokens
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
-                conn_str, nl_prompt, sql_command, gemini_model, duration, 
-                input_tokens, output_tokens, total_tokens, 
-                thinking_tokens, cached_content_tokens
+                redact_connection_url(conn_str), 
+                nl_prompt, sql_command, 
+                gemini_model, 
+                duration, input_tokens, output_tokens, total_tokens, thinking_tokens, cached_content_tokens
             ))
             conn.commit()
 
@@ -169,8 +200,8 @@ def index():
 def translate_query():
     data = request.get_json() or {}
 
-    gemini_model = data.get('gemini_model') or os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
-    api_key = data.get('api_key') or os.environ.get("GEMINI_API_KEY")
+    gemini_model = data.get('gemini_model') or os.environ.get("GEMINI_MODEL")
+    api_key = pick_gemini_api_key()
 
     if not api_key:
         return jsonify({'error': 'Gemini API key is not configured.'}), 400
@@ -278,12 +309,8 @@ def get_config():
         "DATABASE_URL", 
         "postgresql://postgres:password@localhost:26257/defaultdb?sslmode=verify-full"
     )
-    default_model = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash")
+    default_model = os.environ.get("GEMINI_MODEL")
     
-    # Optional: Read API keys from environment variable (comma-separated if multiple)
-    preset_keys_env = os.environ.get("GEMINI_PRESET_KEYS", "")
-    preset_keys = [k.strip() for k in preset_keys_env.split(",") if k.strip()] if preset_keys_env else []
-
     # 2. Extract active connection details if query param provided or default
     conn_str = request.args.get('database_url') or default_db_url
     db_name = "Unknown"
@@ -306,7 +333,6 @@ def get_config():
     return jsonify({
         'default_database_url': default_db_url,
         'default_model': default_model,
-        'preset_keys': preset_keys,
         'database_name': db_name,
         'username': username
     })
